@@ -3,6 +3,10 @@ import os
 from copy import deepcopy
 import time
 
+import torch
+import multiprocessing as mp
+import numpy as np
+
 current_directory = os.getcwd()
 sys.path.append(current_directory + '/sapai_gym')
 
@@ -15,65 +19,39 @@ from sapai.shop import Shop
 from sapai.teams import Team
 from sapai.player import Player
 
-import multiprocessing as mp
+# This process can be ran on multiple threads, it will run many simulations, and return the results
+def run_simulation(net : SAPAI, config : dict) -> list[tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]]:
+    player_list = [Player() for _ in range(config["players_per_simulation"])]
+    player_rewards = [0 for _ in range(config["players_per_simulation"])]
+    player_rollout_action_replays = [[] for _ in range(config["players_per_simulation"])]
+
+
+    # Run a turn: Completes when all players have ended their turn or
+    # when the action limit has reached the action limit
+    player_turn_action_replays = [[] for _ in range(config["players_per_simulation"])]
+    for action_number in range(config['action_limit']):
+        current_state_encodings = net.state_to_encoding(player_list)
+        actions, v = net(current_state_encodings)
+
+        # Choosing whether the agent should take a random action or not
+        decision_vector = np.random.uniform(0, 1, size=32)
+
+        pass
+
+
+    return local_experience_replay
 
 def train():
     shop = Shop()
     team = Team()
     player = Player(shop, team)
 
-    net = SAPAI(config = DEFAULT_CONFIGURATION)
+    config = DEFAULT_CONFIGURATION
 
-    print(buy_pet(player, 0))
-    print(buy_pet(player, 0))
-    print(buy_food(player, 0, 1))
-    print(roll(player))
+    net = SAPAI(config = config)
 
-    # Forward pass
-    encoding = net.state_to_encoding(player)
-    out = net(encoding)
-
-    start_time = time.time()
-    for _ in range(100):
-        encoding = net.state_to_encoding(player)
-    end_time = time.time()
-
-    execution_time = end_time - start_time
-    print("Execution time:", execution_time, "seconds")
-
-
-    '''
-    for i in range(42):
-    player = Player()
-    player.gold = 100
-
-    #print(player.shop, player.team, "gold:", player.gold, "\n")
-
-    code = call_action_from_q_index(player, i)
-    print("code:", code)
-
-    print("done")
-    '''
-
-    # Function testing
-    '''
-    buy_pet(player, 0)
-    bought_pet = player.team.slots[0]
-    player.team.slots[1] = deepcopy(bought_pet)
-    player.team.slots[2] = deepcopy(bought_pet)
-    
-    print(player.shop, player.team, "gold:", player.gold, "\n")
-    buy_food(player, 0, 0)
-    combine(player, 0)
-
-    freeze(player, 0)
-    freeze(player, 0)
-    unfreeze(player, 0)
-
-    end_turn(player)
-
-    print(player.shop, player.team, "gold:", player.gold, "\n")
-    '''
+    # Run the simulation
+    run_simulation(deepcopy(net), config)
 
 if __name__ == "__main__":
     train()

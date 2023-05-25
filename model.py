@@ -114,7 +114,7 @@ class SAPAI(nn.Module):
             encoding[batch_no, 0, all_items_idx["wins"]] = wins / 10
 
             # Dimension 2: Shop pets
-            for i, pet in enumerate(player.shop.pets):
+            for i, pet in enumerate(current_player.shop.pets):
                 enc_col = 1 + i
                 encoding[batch_no, enc_col, all_items_idx["attack"]] = pet.attack / 25.0 - 1.0
                 encoding[batch_no, enc_col, all_items_idx["health"]] = pet.health / 25.0 - 1.0
@@ -125,7 +125,7 @@ class SAPAI(nn.Module):
 
 
             # Dimension 3: Shop foods
-            for i, food in enumerate(player.shop.foods):
+            for i, food in enumerate(current_player.shop.foods):
                 enc_col = 7 + i
                 encoding[batch_no, enc_col, all_items_idx["attack"]] = food.attack / 25.0 - 1.0
                 encoding[batch_no, enc_col, all_items_idx["health"]] = food.health / 25.0 - 1.0
@@ -134,8 +134,8 @@ class SAPAI(nn.Module):
                 encoding[batch_no, enc_col, all_items_idx[food.name]] = 1.0
 
             # Dimension 4: Team
-            for i, pet in enumerate(player.team):
-                if i not in player.team.filled:
+            for i, pet in enumerate(current_player.team):
+                if i not in current_player.team.filled:
                     continue
                 
                 pet = pet.pet
