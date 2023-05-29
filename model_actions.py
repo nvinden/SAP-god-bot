@@ -20,7 +20,7 @@ agent_actions = {
     "roll": 1,
     "buy_pet": 6,
     "sell": 5,
-    "buy_food": 10,
+    "buy_food": 15,
     "combine": 5,
     "freeze": 7,
     "unfreeze": 7,
@@ -29,9 +29,26 @@ agent_actions = {
 
 failure_codes = {"not_enough_gold" : 1, "not_enough_space": 1, "sold_empty_slot": 1, "invalid_pet_idx": 1, "no_combinable_pets": 1}
 
+result_string_to_rewards = {
+    "success": 0.0,
+    "not_enough_gold": -1.0,
+    "not_enough_space": -1.0,
+    "sold_empty_slot": -1.0,
+    "invalid_pet_idx": -1.0,
+    "no_combinable_pets": -1.0,
+    "invalid_idx": -1.0,
+    "round_win": 1.0,
+    "round_loss": -1.0,
+    "game_win": 5.0,
+    "game_loss": -5.0,
+}
+
 # Rolling the shop
 def roll(shop : Shop) -> None:
-    shop.roll()
+    try:
+        shop.roll()
+    except GoldException:
+        return "not_enough_gold"
     return "success"
 
 # Buys a pet from the shop, adds it to the players band
@@ -74,7 +91,7 @@ def sell(player : Player, pet_idx : int) -> str:
 # TODO instead translate the pet idx not from shop indexes, but to the
 # indexes of the FOOOD in the shop
 def buy_food(player : Player, food_idx : int, pet_idx : int) -> str:
-    assert food_idx >= 0 and food_idx < 2
+    assert food_idx >= 0 and food_idx < 3
     assert pet_idx >= 0 and pet_idx < 5
 
     number_shop_pets = len(player.shop.pets)
@@ -175,35 +192,38 @@ def call_action_from_q_index(player : Player, q_idx : int) -> str:
     assert q_idx >= 0 and q_idx < ranges[-1]
 
     if q_idx == 0: # Roll
-        print("Rolling")
+        #print("Rolling")
         return roll(player)
     elif q_idx >= ranges[0] and q_idx < ranges[1]: # Buy pet
-        print("Buying pet")
+        #print("Buying pet")
         player_index = q_idx - ranges[0]
         return buy_pet(player, player_index)
     elif q_idx >= ranges[1] and q_idx < ranges[2]: # Sell pet
-        print("Selling pet")
+        #print("Selling pet")
         player_index = q_idx - ranges[1]
         return sell(player, q_idx - 7)
     elif q_idx >= ranges[2] and q_idx < ranges[3]: # Buy food
-        print("Buying food")
+        #print("Buying food")
         player_index = (q_idx - ranges[2]) % 5
-        sell_index = (q_idx - ranges[2]) // 5
-        return buy_food(player, player_index, sell_index)
+        food_index = (q_idx - ranges[2]) // 5
+        return buy_food(player, food_index, player_index)
     elif q_idx >= ranges[3] and q_idx < ranges[4]: # Combine
-        print("Combining")
+        #print("Combining")
         player_index = q_idx - ranges[3]
         return combine(player, player_index)
     elif q_idx >= ranges[4] and q_idx < ranges[5]: # Freeze
-        print("Freezing")
+        #print("Freezing")
         player_index = q_idx - ranges[4]
         return freeze(player, player_index)
     elif q_idx >= ranges[5] and q_idx < ranges[6]: # Unfreeze
-        print("Unfreezing")
+        #print("Unfreezing")
         player_index = q_idx - ranges[5]
         return unfreeze(player, player_index)
     elif q_idx >= ranges[6] and q_idx < ranges[7]: # End turn
-        print("Ending turn")
+        #print("Ending turn")
         return end_turn(player)
     
     return "something_went_wrong"
+
+def auto_order_team(player : Player) -> Player:
+    pass

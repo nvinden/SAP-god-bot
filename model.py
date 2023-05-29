@@ -14,6 +14,8 @@ from sapai.player import Player, GoldException, WrongObjectException, FullTeamEx
 
 from sapai.data import data as ALL_DATA
 
+N_ACTIONS = 47
+
 all_items_idx = {
     "turn_number": 0,
     "player_lives_remaining": 1,
@@ -54,6 +56,7 @@ status_to_food = {
     'status-extra-life':'food-mushroom',
     'status-steak-attack':'food-steak',
 }
+
 food_to_status = {v : k for k, v in status_to_food.items()}
 
 class SAPAI(nn.Module):
@@ -74,7 +77,7 @@ class SAPAI(nn.Module):
         transformer_encoder_layer = nn.TransformerEncoderLayer(d_model = self.d_model, nhead = self.config['nhead'], batch_first = True)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer = transformer_encoder_layer, num_layers = self.config['num_layers'])
 
-        self.actions = nn.Linear(in_features = self.d_model * 15, out_features = 42)
+        self.actions = nn.Linear(in_features = self.d_model * 15, out_features = N_ACTIONS)
         self.v = nn.Linear(in_features = self.d_model * 15, out_features = 1)
 
 

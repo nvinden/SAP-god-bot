@@ -30,8 +30,6 @@ class FullTeamException(Exception):
     def __init__(self, message):
         super().__init__(message)
 
-
-
 def storeaction(func):
     def store_action(*args, **kwargs):
         player = args[0]
@@ -222,7 +220,7 @@ class Player:
         cost = shop_slot.cost
 
         if cost > self.gold:
-            raise Exception(
+            raise GoldException(
                 f"Attempted to buy Pet of cost {cost} with only {self.gold} gold"
             )
 
@@ -420,7 +418,7 @@ class Player:
     def roll(self):
         """Roll shop"""
         if self.gold < 1:
-            raise Exception("Attempt to roll without gold")
+            raise GoldException("Attempt to roll without gold")
         self.shop.roll()
         self.gold -= 1
         return ()
@@ -605,6 +603,12 @@ class Player:
         print_str += "CURRENT TEAM: \n--------------\n" + self.team.__repr__() + "\n"
         print_str += "CURRENT SHOP: \n--------------\n" + self.shop.__repr__()
         return print_str
+    
+    def turn_ended(self) -> bool:
+        for slot in self.team:
+            slot._pet.eot_trigger()
+
+        return True
 
 
 def get_combined_status(pet1, pet2):
