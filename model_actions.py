@@ -3,6 +3,7 @@
 
 import sys
 import os
+import random
 
 current_directory = os.getcwd()
 sys.path.append(current_directory + '/sapai_gym')
@@ -41,6 +42,78 @@ result_string_to_rewards = {
     "round_loss": -1.0,
     "game_win": 5.0,
     "game_loss": -5.0,
+}
+
+# This contains the bias for the pet auto order
+# Higher numbers means that pets are more likely to be in the front
+# Lower numbers means that pets are more likely to be in the back
+pet_auto_order_bias = {
+    'pet-ant': 2,
+    'pet-beaver': 0,
+    'pet-cricket': 1,
+    'pet-duck': 0,
+    'pet-fish': 0,
+    'pet-horse': -3,
+    'pet-mosquito': 0,
+    'pet-otter': 0,
+    'pet-pig': 0,
+    'pet-sloth': 0,
+    'pet-crab': 0,
+    'pet-dodo': -1,
+    'pet-dog': -1,
+    'pet-elephant': -3,
+    'pet-flamingo': 2,
+    'pet-hedgehog': -2,
+    'pet-peacock': 0,
+    'pet-rat': 0,
+    'pet-shrimp': 0,
+    'pet-spider': 1,
+    'pet-swan': 0,
+    'pet-badger': -5,
+    'pet-blowfish': 2,
+    'pet-camel': 0,
+    'pet-giraffe': -1,
+    'pet-kangaroo': -1,
+    'pet-ox': -2,
+    'pet-rabbit': 0,
+    'pet-sheep': -1,
+    'pet-snail': 0,
+    'pet-turtle': 3,
+    'pet-whale': -1,
+    'pet-bison': 0,
+    'pet-deer': 3,
+    'pet-dolphin': 0,
+    'pet-hippo': 4,
+    'pet-monkey': -1,
+    'pet-penguin': 0,
+    'pet-rooster': 0,
+    'pet-skunk': 0,
+    'pet-squirrel': 0,
+    'pet-worm': 0,
+    'pet-cow': 0,
+    'pet-crocodile': 0,
+    'pet-parrot': 0,
+    'pet-rhino': 0,
+    'pet-scorpion': 0,
+    'pet-seal': 0,
+    'pet-shark': -6,
+    'pet-turkey': 0,
+    'pet-cat': 0,
+    'pet-boar': 0,
+    'pet-dragon': 0,
+    'pet-fly': -5,
+    'pet-gorilla': 0,
+    'pet-leopard': 0,
+    'pet-mammoth': 6,
+    'pet-snake': -1,
+    'pet-tiger': 0,
+    'pet-zombie-cricket': 0,
+    'pet-bus': 0,
+    'pet-zombie-fly': 0,
+    'pet-dirty-rat': 0,
+    'pet-chick': 0,
+    'pet-ram': 0,
+    'pet-bee': 0
 }
 
 # Rolling the shop
@@ -145,17 +218,9 @@ def freeze(player : Player, shop_idx : int) -> str:
     # If slot is not filled
     if shop_idx not in player.shop.filled:
         return "invalid_idx"
-
-    # If slot is already frozen
-    if player.shop.slots[shop_idx].frozen:
-        return "invalid_idx"
-
-    try:
-        player.freeze(shop_idx)
-        return "success"
-    except Exception as e:
-        return "invalid_idx"
     
+    return "success"
+
 def unfreeze(player : Player, shop_idx : int) -> str:
     assert shop_idx >= 0 and shop_idx < 7
 
@@ -226,4 +291,14 @@ def call_action_from_q_index(player : Player, q_idx : int) -> str:
     return "something_went_wrong"
 
 def auto_order_team(player : Player) -> Player:
-    pass
+    player.gold = 50
+    player.roll()
+    player.buy_pet(0)
+    player.buy_pet(0)
+    player.buy_pet(0)
+
+    # Orders pets from 1. Bias, 2. Total stats (attack + health)
+    value_pairs = [(pet_idx, slot) for slot, pet_idx in zip(player.team.slots, player.team.filled)]
+    value_pairs = sorted(value_pairs, key = lambda x : (pet_auto_order_bias[x[1].pet.name], x[1].attack + x[1].health), reverse = False)
+
+    player.reorder([x[0] for x in value_pairs])
