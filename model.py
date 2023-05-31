@@ -14,6 +14,8 @@ from sapai.player import Player, GoldException, WrongObjectException, FullTeamEx
 
 from sapai.data import data as ALL_DATA
 
+from config import rollout_device, training_device
+
 N_ACTIONS = 47
 
 all_items_idx = {
@@ -60,7 +62,7 @@ status_to_food = {
 food_to_status = {v : k for k, v in status_to_food.items()}
 
 class SAPAI(nn.Module):
-    def __init__(self, config = None):
+    def __init__(self, config = None, phase : str = "rollout"):
         super(SAPAI, self).__init__()
 
         # config is none, import default config, and use that
@@ -68,20 +70,45 @@ class SAPAI(nn.Module):
             from config import DEFAULT_CONFIGURATION
             config = DEFAULT_CONFIGURATION
 
+        self.phase = phase
+
         self.config = config
 
         # Round up number_of_items so it is divisable by self.config['nhead']
         self.d_model = number_of_items + (self.config['nhead'] - number_of_items % self.config['nhead'])
 
         # Initializing the neural network
-        transformer_encoder_layer = nn.TransformerEncoderLayer(d_model = self.d_model, nhead = self.config['nhead'], batch_first = True)
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer = transformer_encoder_layer, num_layers = self.config['num_layers'])
+        transformer_encoder_layer = nn.TransformerEncoderLayer(d_model = self.d_model, nhead = self.config['nhead'], batch_first = True).to(self.get_device())
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer = transformer_encoder_layer, num_layers = self.config['num_layers']).to(self.get_device())
 
-        self.actions = nn.Linear(in_features = self.d_model * 15, out_features = N_ACTIONS)
-        self.v = nn.Linear(in_features = self.d_model * 15, out_features = 1)
+        self.actions = nn.Linear(in_features = self.d_model * 15, out_features = N_ACTIONS).to(self.get_device())
+        self.v = nn.Linear(in_features = self.d_model * 15, out_features = 1).to(self.get_device())
 
+    def set_device(self, phase : str):
+        assert phase == "rollout" or phase == "training"
+
+        self.phase = phase
+
+        if phase == "rollout":
+            self.to(rollout_device)
+        elif self.phase == "training":
+            self.to(training_device)
+        else:
+            raise Exception("phase is not rollout or training")
+        
+
+
+    def get_device(self):
+        if self.phase == "rollout":
+            return rollout_device
+        elif self.phase == "training":
+            return training_device
+        else:
+            raise Exception("phase is not rollout or training")
+        
 
     def forward(self, x : torch.FloatTensor) -> tuple[torch.FloatTensor, torch.FloatTensor]:
+        x = x.to(self.get_device())
         out_encoder = self.transformer_encoder(x)
         out_encoder = out_encoder.reshape(out_encoder.shape[0], -1)
 
@@ -100,7 +127,7 @@ class SAPAI(nn.Module):
         else:
             raise Exception("player is not a player or a list of players")
 
-        encoding = torch.zeros(size = (len(player_list), 15, self.d_model), dtype = torch.float32)
+        encoding = torch.zeros(size = (len(player_list), 15, self.d_model), dtype = torch.float32).to(self.get_device())
 
         for batch_no, current_player in enumerate(player_list):
             # Dimension 1: Turn number, player health remaining, gold and wins

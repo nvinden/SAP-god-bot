@@ -1,3 +1,7 @@
 # Caches
 __pycache__
 sapai_gym/sapai/__pycache__
+
+# Data
+*.pkl
+*.pt

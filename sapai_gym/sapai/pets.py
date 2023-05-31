@@ -103,6 +103,12 @@ class Pet:
             return self.fd[f"level{self.level}Ability"]
         else:
             return empty_ability
+        
+    def set_attack(self, value):
+        self._attack = value
+
+    def set_health(self, value):
+        self._health = value
 
     def get_damage(self, value):
         return status.apply_damage_dict[self.status](value)

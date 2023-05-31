@@ -70,7 +70,7 @@ class Player:
         self,
         shop=None,
         team=None,
-        lives=10,
+        lives=5,
         default_gold=10,
         gold=10,
         turn=1,

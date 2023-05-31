@@ -10,7 +10,9 @@
             "request": "launch",
             "program": "${workspaceFolder}/train.py",
             "console": "integratedTerminal",
-            "justMyCode": true
+            "justMyCode": true,
+            //"args": ["-Xfrozen_modules=off"],
+            "pythonArgs": ["-Xfrozen_modules=off"],
         }
     ]
 }

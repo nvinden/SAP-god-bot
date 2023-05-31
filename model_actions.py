@@ -12,12 +12,13 @@ from sapai.pets import Pet
 from sapai.shop import Shop
 from sapai.teams import Team
 from sapai.player import Player, GoldException, WrongObjectException, FullTeamException
+from config import rollout_device, training_device
 
 # This dictonary contains all the actions that the agent can take, and
 # the total number of variations of the action
 agent_actions_list = ["roll", "buy_pet", "sell", "buy_food", "combine", "freeze", "unfreeze", "end_turn"]
 
-agent_actions = {
+num_agent_actions = {
     "roll": 1,
     "buy_pet": 6,
     "sell": 5,
@@ -28,21 +29,21 @@ agent_actions = {
     "end_turn": 1
 }
 
-failure_codes = {"not_enough_gold" : 1, "not_enough_space": 1, "sold_empty_slot": 1, "invalid_pet_idx": 1, "no_combinable_pets": 1}
-
 result_string_to_rewards = {
     "success": 0.0,
-    "not_enough_gold": -1.0,
-    "not_enough_space": -1.0,
-    "sold_empty_slot": -1.0,
-    "invalid_pet_idx": -1.0,
-    "no_combinable_pets": -1.0,
-    "invalid_idx": -1.0,
+    "not_enough_gold": -0.6,
+    "not_enough_space": -0.6,
+    "sold_empty_slot": -0.6,
+    "invalid_pet_idx": -0.6,
+    "no_combinable_pets": -0.6,
+    "invalid_idx": -0.6,
     "round_win": 1.0,
     "round_loss": -1.0,
-    "game_win": 5.0,
-    "game_loss": -5.0,
+    "game_win": 20.0,
+    "game_loss": -10.0,
 }
+
+rule_breaking_actions = ["not_enough_gold", "not_enough_space", "sold_empty_slot", "invalid_pet_idx", "no_combinable_pets", "invalid_idx"]
 
 # This contains the bias for the pet auto order
 # Higher numbers means that pets are more likely to be in the front
@@ -143,7 +144,7 @@ def buy_pet(player : Player, pet_idx : int) -> str:
         return "not_enough_gold"
     except FullTeamException as e:
         # Try to buy upgrade if there is no space
-        print(player.shop, player.team, "gold:", player.gold, "\n")
+        #print(player.shop, player.team, "gold:", player.gold, "\n")
         for team_idx in range(5):
             try:
                 player.buy_combine(pet_idx, team_idx)
@@ -252,7 +253,7 @@ def end_turn(player : Player) -> str:
 
 def call_action_from_q_index(player : Player, q_idx : int) -> str:
     # This code is gross, but it just defines the ranges the actions take
-    ranges = [sum([agent_actions[agent_actions_list[j]] for j in range(i + 1)]) for i in range(len(agent_actions_list))]
+    ranges = [sum([num_agent_actions[agent_actions_list[j]] for j in range(i + 1)]) for i in range(len(agent_actions_list))]
 
     assert q_idx >= 0 and q_idx < ranges[-1]
 
@@ -291,14 +292,9 @@ def call_action_from_q_index(player : Player, q_idx : int) -> str:
     return "something_went_wrong"
 
 def auto_order_team(player : Player) -> Player:
-    player.gold = 50
-    player.roll()
-    player.buy_pet(0)
-    player.buy_pet(0)
-    player.buy_pet(0)
-
     # Orders pets from 1. Bias, 2. Total stats (attack + health)
-    value_pairs = [(pet_idx, slot) for slot, pet_idx in zip(player.team.slots, player.team.filled)]
+
+    value_pairs = [(pet_idx, player.team.slots[pet_idx]) for pet_idx in player.team.filled]
     value_pairs = sorted(value_pairs, key = lambda x : (pet_auto_order_bias[x[1].pet.name], x[1].attack + x[1].health), reverse = False)
 
     player.reorder([x[0] for x in value_pairs])
