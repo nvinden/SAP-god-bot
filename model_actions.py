@@ -14,6 +14,10 @@ from sapai.teams import Team
 from sapai.player import Player, GoldException, WrongObjectException, FullTeamException
 from config import rollout_device, training_device
 
+import numpy as np
+
+N_ACTIONS = 47
+
 # This dictonary contains all the actions that the agent can take, and
 # the total number of variations of the action
 agent_actions_list = ["roll", "buy_pet", "sell", "buy_food", "combine", "freeze", "unfreeze", "end_turn"]
@@ -31,17 +35,30 @@ num_agent_actions = {
 
 result_string_to_rewards = {
     "success": 0.0,
-    "not_enough_gold": -0.6,
-    "not_enough_space": -0.6,
-    "sold_empty_slot": -0.6,
-    "invalid_pet_idx": -0.6,
-    "no_combinable_pets": -0.6,
-    "invalid_idx": -0.6,
+    "not_enough_gold": -0.2,
+    "not_enough_space": -0.2,
+    "sold_empty_slot": -0.2,
+    "invalid_pet_idx": -0.2,
+    "no_combinable_pets": -0.2,
+    "invalid_idx": -0.2,
     "round_win": 1.0,
     "round_loss": -1.0,
-    "game_win": 20.0,
-    "game_loss": -10.0,
+    "game_win": 1.0,
+    "game_loss": -1.0,
+    "end_turn": None
 }
+
+all_items_idx = {
+    "turn_number": 0,
+    "player_lives_remaining": 1,
+    "current_gold": 2,
+    "wins": 3,
+    "attack": 4,
+    "health": 5,
+    "cost": 6,
+    "level": 7,
+}
+
 
 rule_breaking_actions = ["not_enough_gold", "not_enough_space", "sold_empty_slot", "invalid_pet_idx", "no_combinable_pets", "invalid_idx"]
 
@@ -117,6 +134,17 @@ pet_auto_order_bias = {
     'pet-bee': 0
 }
 
+action_beginning_index_temp = np.array([num_agent_actions[action_name] for action_name in agent_actions_list])
+action_beginning_index = []
+for i in range(0, len(action_beginning_index_temp)):
+    action_beginning_index.append(action_beginning_index_temp[:i].sum())
+del action_beginning_index_temp
+
+action_ranges = [sum([num_agent_actions[agent_actions_list[j]] for j in range(i + 1)]) for i in range(len(agent_actions_list))]
+
+action2index = {agent_actions_list[i]: i for i in range(len(agent_actions_list))}
+index2action = {i: agent_actions_list[i] for i in range(len(agent_actions_list))}
+
 # Rolling the shop
 def roll(shop : Shop) -> None:
     try:
@@ -143,7 +171,7 @@ def buy_pet(player : Player, pet_idx : int) -> str:
     except GoldException as e:
         return "not_enough_gold"
     except FullTeamException as e:
-        # Try to buy upgrade if there is no space
+        # Try to buy upgrade if there is no spaagent_actions_listce
         #print(player.shop, player.team, "gold:", player.gold, "\n")
         for team_idx in range(5):
             try:
@@ -220,7 +248,15 @@ def freeze(player : Player, shop_idx : int) -> str:
     if shop_idx not in player.shop.filled:
         return "invalid_idx"
     
-    return "success"
+    # if slot is frozen
+    if player.shop.slots[shop_idx].frozen:
+        return "invalid_idx"
+    
+    try:
+        player.freeze(shop_idx)
+        return "success"
+    except Exception as e:
+        return "invalid_idx"
 
 def unfreeze(player : Player, shop_idx : int) -> str:
     assert shop_idx >= 0 and shop_idx < 7
@@ -245,7 +281,7 @@ def unfreeze(player : Player, shop_idx : int) -> str:
 
 def end_turn(player : Player) -> str:
     player.end_turn()
-    return "success"
+    return "end_turn"
 
 ###################
 # Model Functions #
@@ -253,39 +289,40 @@ def end_turn(player : Player) -> str:
 
 def call_action_from_q_index(player : Player, q_idx : int) -> str:
     # This code is gross, but it just defines the ranges the actions take
-    ranges = [sum([num_agent_actions[agent_actions_list[j]] for j in range(i + 1)]) for i in range(len(agent_actions_list))]
+    if not isinstance(q_idx, int):
+        q_idx = int(q_idx)
 
-    assert q_idx >= 0 and q_idx < ranges[-1]
+    assert q_idx >= 0 and q_idx < action_ranges[-1]
 
     if q_idx == 0: # Roll
         #print("Rolling")
         return roll(player)
-    elif q_idx >= ranges[0] and q_idx < ranges[1]: # Buy pet
+    elif q_idx >= action_ranges[0] and q_idx < action_ranges[1]: # Buy pet
         #print("Buying pet")
-        player_index = q_idx - ranges[0]
+        player_index = q_idx - action_ranges[0]
         return buy_pet(player, player_index)
-    elif q_idx >= ranges[1] and q_idx < ranges[2]: # Sell pet
+    elif q_idx >= action_ranges[1] and q_idx < action_ranges[2]: # Sell pet
         #print("Selling pet")
-        player_index = q_idx - ranges[1]
+        player_index = q_idx - action_ranges[1]
         return sell(player, q_idx - 7)
-    elif q_idx >= ranges[2] and q_idx < ranges[3]: # Buy food
+    elif q_idx >= action_ranges[2] and q_idx < action_ranges[3]: # Buy food
         #print("Buying food")
-        player_index = (q_idx - ranges[2]) % 5
-        food_index = (q_idx - ranges[2]) // 5
+        player_index = (q_idx - action_ranges[2]) % 5
+        food_index = (q_idx - action_ranges[2]) // 5
         return buy_food(player, food_index, player_index)
-    elif q_idx >= ranges[3] and q_idx < ranges[4]: # Combine
+    elif q_idx >= action_ranges[3] and q_idx < action_ranges[4]: # Combine
         #print("Combining")
-        player_index = q_idx - ranges[3]
+        player_index = q_idx - action_ranges[3]
         return combine(player, player_index)
-    elif q_idx >= ranges[4] and q_idx < ranges[5]: # Freeze
+    elif q_idx >= action_ranges[4] and q_idx < action_ranges[5]: # Freeze
         #print("Freezing")
-        player_index = q_idx - ranges[4]
+        player_index = q_idx - action_ranges[4]
         return freeze(player, player_index)
-    elif q_idx >= ranges[5] and q_idx < ranges[6]: # Unfreeze
+    elif q_idx >= action_ranges[5] and q_idx < action_ranges[6]: # Unfreeze
         #print("Unfreezing")
-        player_index = q_idx - ranges[5]
+        player_index = q_idx - action_ranges[5]
         return unfreeze(player, player_index)
-    elif q_idx >= ranges[6] and q_idx < ranges[7]: # End turn
+    elif q_idx >= action_ranges[6] and q_idx < action_ranges[7]: # End turn
         #print("Ending turn")
         return end_turn(player)
     
@@ -295,6 +332,63 @@ def auto_order_team(player : Player) -> Player:
     # Orders pets from 1. Bias, 2. Total stats (attack + health)
 
     value_pairs = [(pet_idx, player.team.slots[pet_idx]) for pet_idx in player.team.filled]
-    value_pairs = sorted(value_pairs, key = lambda x : (pet_auto_order_bias[x[1].pet.name], x[1].attack + x[1].health), reverse = False)
+    value_pairs = sorted(value_pairs, key = lambda x : (pet_auto_order_bias[x[1].pet.name], x[1].attack + x[1].health), reverse = True)
 
     player.reorder([x[0] for x in value_pairs])
+
+def action_index_to_action_type(action_number : int) -> str:
+    for i in range(len(agent_actions_list) - 1):
+        if action_number >= action_beginning_index[i] and action_number < action_beginning_index[i + 1]:
+            return agent_actions_list[i]
+        
+    return agent_actions_list[-1]
+
+def create_available_action_mask(player : Player) -> np.ndarray:
+    action_mask = np.ones(shape = (action_beginning_index[-1] + 1), dtype = np.uint8)
+
+    # TODO: fix buying in the case there is a food discount
+
+    # GOLD SETTINGS
+    if player.gold == 0:
+        action_mask[action_beginning_index[action2index["roll"]]:action_beginning_index[action2index["roll"] + 1]] = 0
+
+    if player.gold < 3:
+        action_mask[action_beginning_index[action2index["buy_pet"]]:action_beginning_index[action2index["buy_pet"] + 1]] = 0
+    else:
+        # BUY PET
+        pet_spaces_shop = np.array([i for i, filled in enumerate(player.shop.slots) if filled.slot_type == "pet"])
+
+        # 1) check if there is a pet that can be bought
+        no_pet_in_action_idx = np.array(list({0, 1, 2, 3, 4, 5}.difference(pet_spaces_shop))) + action_beginning_index[action2index["buy_pet"]]
+        if len(no_pet_in_action_idx): action_mask[no_pet_in_action_idx] = 0
+
+        if len(player.team.filled) == 5: # If there is no available slot
+            # 2) Check if there is a pet that can be combined-bought, if team is full
+            combinable_list_team = [slot.pet.name for slot in player.team.slots if slot.pet.level < 3]
+            not_combinable_mask = np.array([i for i, slot in enumerate(player.shop.slots) if slot.obj.name not in combinable_list_team and slot.slot_type == "pet"]) + action_beginning_index[action2index["buy_pet"]]
+            if len(not_combinable_mask): action_mask[not_combinable_mask] = 0
+
+    # BUY FOOD
+    number_of_food = len(player.shop.foods)
+    indexes_of_foods = [i for i, slot in enumerate(player.shop.slots) if slot.slot_type == "food"]
+    unfoodable_mask = np.array([i for i in range(num_agent_actions["buy_food"]) if not (i // 5 < number_of_food and i % 5 in player.team.filled and player.shop.slots[indexes_of_foods[i // 5]].cost <= player.gold)]) + action_beginning_index[action2index["buy_food"]]
+    if len(unfoodable_mask) != 0: action_mask[unfoodable_mask] = 0
+
+
+    # SELL PET
+    unsellable_pet_mask = np.array([i for i in player.team.empty]) + action_beginning_index[action2index["sell"]]
+    if len(unsellable_pet_mask) != 0: action_mask[unsellable_pet_mask] = 0
+
+    # COMBINE
+    pet_names_shop = [slot.pet.name for slot in player.team.slots if slot.pet.name != "pet-none"]
+    uncombinable_mask = np.array([i for i, slot in enumerate(player.team.slots) if pet_names_shop.count(slot.pet.name) == 1 or slot.pet.name == "pet-none"]) + action_beginning_index[action2index["combine"]]
+    if len(uncombinable_mask) != 0: action_mask[uncombinable_mask] = 0 #TODO: CHECK IF THE PETS CAN ACTUALLY BE COMBINED WITH THEIR LEVELS AND SUCH
+
+    # FREEZE AND UNFREEZE
+    unfreezeable_mask = np.array([i for i in range(num_agent_actions["freeze"]) if i >= len(player.shop.slots) or player.shop.slots[i].frozen]) + action_beginning_index[action2index["freeze"]]
+    ununfreezeable_mask = np.array([i for i in range(num_agent_actions["unfreeze"]) if i >= len(player.shop.slots) or not player.shop.slots[i].frozen]) + action_beginning_index[action2index["unfreeze"]]
+
+    if len(unfreezeable_mask) != 0: action_mask[unfreezeable_mask] = 0
+    if len(ununfreezeable_mask) != 0: action_mask[ununfreezeable_mask] = 0
+
+    return action_mask

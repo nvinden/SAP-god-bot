@@ -15,19 +15,7 @@ from sapai.player import Player, GoldException, WrongObjectException, FullTeamEx
 from sapai.data import data as ALL_DATA
 
 from config import rollout_device, training_device
-
-N_ACTIONS = 47
-
-all_items_idx = {
-    "turn_number": 0,
-    "player_lives_remaining": 1,
-    "current_gold": 2,
-    "wins": 3,
-    "attack": 4,
-    "health": 5,
-    "cost": 6,
-    "level": 7,
-}
+from model_actions import N_ACTIONS, all_items_idx
 
 # Pet food index numbers:
 pet_name_idx = [k for k, v in ALL_DATA['pets'].items() if k != 'pet-none' and "StandardPack" in v['packs']]

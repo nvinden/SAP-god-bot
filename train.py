@@ -23,15 +23,13 @@ sys.path.append(current_directory + '/sapai_gym')
 
 from model_actions import *
 from model import SAPAI, N_ACTIONS
-from config import DEFAULT_CONFIGURATION, rollout_device, training_device
-from eval import evaluate_model
+from config import DEFAULT_CONFIGURATION, rollout_device, training_device, VERBOSE
+from eval import evaluate_model, visualize_rollout, test_legal_move_masking
 
 from sapai.shop import Shop
 from sapai.teams import Team
 from sapai.player import Player
 from sapai.battle import Battle
-
-VERBOSE = False
 
 # This process can be ran on multiple threads, it will run many simulations, and return the results
 def run_simulation(net : SAPAI, config : dict, epsilon : float) -> list:
@@ -42,11 +40,6 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float) -> list:
     player_list = [Player() for _ in range(config["players_per_simulation"])]
     local_experience_replay = []
     # This stores the actions that the agent can take, it is the first instance in the action list
-    action_beginning_index_temp = np.array([num_agent_actions[action_name] for action_name in agent_actions_list])
-    action_beginning_index = []
-    for i in range(0, len(action_beginning_index_temp)):
-        action_beginning_index.append(action_beginning_index_temp[:i].sum())
-    del action_beginning_index_temp
 
     #############
     # SHOP TURN #
@@ -74,18 +67,35 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float) -> list:
             number_random = np.count_nonzero(random_actions)
             number_q_actions = len(active_player_list) - number_random
 
+            action_mask = [create_available_action_mask(player) for player in active_player_list]
+            action_mask_indexes = [np.where(mask == 1)[0] for mask in action_mask]
+
             if number_random > 0: # Random Actions:
                 # This will first choose a random action type (buy, sell, skip, etc), then
                 # randomly choose a sub action of that action, this is to prevent the agent
                 # from overprioritizin actions with many sub actions
-                action_types = np.random.randint(0, len(agent_actions_list), size = number_random)
-                random_actions_indices = [np.random.randint(0, num_agent_actions[agent_actions_list[action_idx]]) for action_idx in action_types]
-                random_actions_indices = [val + action_beginning_index[action_idx] for val, action_idx in zip(random_actions_indices, action_types)]
+
+                # Random with nested structure
+                #action_types = np.random.randint(0, len(agent_actions_list), size = number_random)
+                #random_actions_indices = [np.random.randint(0, num_agent_actions[agent_actions_list[action_idx]]) for action_idx in action_types]
+                #random_actions_indices = [val + action_beginning_index[action_idx] for val, action_idx in zip(random_actions_indices, action_types)]
+
+                # Using Mask
+                random_actions_indices = np.array([random.sample(action_mask_indexes[i].tolist(), 1)[0] for i in range(number_random)])
+
                 move_actions[random_actions] = random_actions_indices
 
             # Max Q Action:
             if number_q_actions > 0:
                 max_q_action_vector, _ = net(current_state_encodings[np.logical_not(random_actions), :])
+                max_q_action_mask = np.stack(deepcopy(action_mask))
+                max_q_action_mask = torch.tensor(max_q_action_mask[np.logical_not(random_actions), :], dtype = torch.float32, device = rollout_device).requires_grad_(False)
+
+                # Adding mask to the max q action vector
+                where_zeros = max_q_action_mask < 0.5
+                max_q_action_vector[where_zeros] = -9999999
+
+
                 max_q_actions_indices = torch.argmax(max_q_action_vector, dim = 1)
                 move_actions[np.logical_not(random_actions)] = max_q_actions_indices.cpu()
 
@@ -95,17 +105,19 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float) -> list:
             for player_number, player, action in zip(active_players, active_player_list, move_actions):
                 #current_state = deepcopy(player)
                 result_string = call_action_from_q_index(player, int(action))
-                reward = result_string_to_rewards[result_string] * config["players_per_simulation"]
+
+                reward = result_string_to_rewards[result_string]
+                
                 next_state_encoding = net.state_to_encoding(player)
                 #next_state = deepcopy(player)
 
                 player_turn_action_replays[player_number].append({
                     #"state": current_state,
-                    "state_encoding": current_state_encodings[player_number_to_i[player_number]],
-                    "action": action,
+                    "state_encoding": current_state_encodings[player_number_to_i[player_number]].cpu().numpy(),
+                    "action": action.item(),
                     "reward": reward,
                     #"next_state": next_state,
-                    "next_state_encoding": torch.squeeze(next_state_encoding),
+                    "next_state_encoding": torch.squeeze(next_state_encoding).cpu().numpy(),
                 })
 
             # 3) Removing players who have ended their turn
@@ -113,12 +125,25 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float) -> list:
             for ended_player_index in players_who_ended_turn:
                 active_players.remove(i_to_player_number[ended_player_index])
 
+        # Forcing an end to the turn for all players who havent yet ended their turn
+        for player_number in active_players:
+            player = player_list[player_number]
+            result_string = call_action_from_q_index(player, N_ACTIONS - 1)
+            encoding = np.squeeze(net.state_to_encoding(player).cpu().numpy())
+
+            player_turn_action_replays[player_number].append({
+                "state_encoding": deepcopy(encoding),
+                "action": N_ACTIONS - 1,
+                "reward": None,
+                "next_state_encoding": deepcopy(encoding),
+            })
+
         ##########
         # BATTLE #
         ##########
         
         # Randomly pair players together, and battle them, recording the results
-        player_total_rewards = [0 for _ in range(config["players_per_simulation"])]
+        player_end_turn_rewards = [0 for _ in range(config["players_per_simulation"])]
         player_total_match_results = [defaultdict(int) for _ in range(config["players_per_simulation"])]
         players_with_remaining_battles = {i for i in range(config["players_per_simulation"])}
         total_battles_remaining = [config["number_of_battles_per_player_turn"] for _ in range(len(player_list))]
@@ -128,6 +153,7 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float) -> list:
         for player in player_list:
             auto_order_team(player)
 
+        # Preforming battles
         index = 0
         while sum_total_battles_remaining > 0:
             if index not in players_with_remaining_battles:
@@ -143,18 +169,29 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float) -> list:
                 # Battle the players
                 player_team = player_list[index].team
                 opponent_team = player_list[opponent].team
-                battle = Battle(player_team, opponent_team)
-                winner = battle.battle()
+                pl_temp = deepcopy(player_team)
+                pl_temp.move_forward()
+                op_temp = deepcopy(opponent_team)
+                op_temp.move_forward()
+
+                try:
+                    battle = Battle(pl_temp, op_temp)
+                    winner = battle.battle()
+                except Exception as e:
+                    #print(e, flush = True)
+                    #print(pl_temp, flush = True)
+                    #print(op_temp, flush = True)
+                    winner = 0
 
                 # Record the results
                 if winner == 0: # Player won
-                    player_total_rewards[index] += result_string_to_rewards["round_win"]
-                    player_total_rewards[opponent] += result_string_to_rewards["round_loss"]
+                    player_end_turn_rewards[index] += result_string_to_rewards["round_win"]
+                    player_end_turn_rewards[opponent] += result_string_to_rewards["round_loss"]
                     player_total_match_results[index]["wins"] += 1
                     player_total_match_results[opponent]["losses"] += 1
                 elif winner == 1: # Opponent won
-                    player_total_rewards[index] += result_string_to_rewards["round_loss"]
-                    player_total_rewards[opponent] += result_string_to_rewards["round_win"]
+                    player_end_turn_rewards[index] += result_string_to_rewards["round_loss"]
+                    player_end_turn_rewards[opponent] += result_string_to_rewards["round_win"]
                     player_total_match_results[index]["losses"] += 1
                     player_total_match_results[opponent]["wins"] += 1
                 else: # Draw
@@ -173,22 +210,27 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float) -> list:
             
             index = (index + 1) % len(player_list)
 
-        
+        ############
+        # UPDATING #
+        ############
+
         # Updating players lives and wins
         for i, (player, results) in enumerate(zip(player_list, player_total_match_results)):
             if results['wins'] > results['losses']: # WIN
                 player.wins += 1
             elif results['losses'] > results['wins']: #LOSS
                 player.lives -= 1
+
+            player_end_turn_rewards[i] /= config["number_of_battles_per_player_turn"]
             
             if player.lives <= 0: # Adding round loss
-                player_total_rewards[i] += result_string_to_rewards["game_loss"]
+                player_end_turn_rewards[i] += result_string_to_rewards["game_loss"]
             if player.wins >= 10: # Adding round win
-                player_total_rewards[i] += result_string_to_rewards["game_win"]
+                player_end_turn_rewards[i] += result_string_to_rewards["game_win"]
 
             if VERBOSE:
                 print(f"Player {i:02d} has {player.wins:02d} wins and {player.lives} lives remaining")
-                print(f"\t{player_total_rewards[i] / config['number_of_battles_per_player_turn']} total rewards")
+                print(f"\tFightR: {player_end_turn_rewards[i]}")
                 print(f"\t{results['wins']:02d} wins, {results['losses']:02d} losses, {results['draws']:02d} draws")
                 team_string = str(player.team).replace('\n', ' ').strip()
                 team_string = re.sub(r'\s{2,}', ' ', team_string)
@@ -198,10 +240,14 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float) -> list:
         # Update the player_turn_action_replays
         for player_number in player_turn_action_replays:
             for action_replay in player_turn_action_replays[player_number]:
-                action_replay["reward"] += player_total_rewards[player_number]
-                action_replay["reward"] /= config["number_of_battles_per_player_turn"]
+                if action_replay["reward"] is None:
+                    action_replay["reward"] = player_end_turn_rewards[player_number]
             
             local_experience_replay.extend(deepcopy(player_turn_action_replays[player_number]))
+
+        # Starting the next turn for each player
+        for player in player_list:
+            player.start_turn()
 
     return local_experience_replay
 
@@ -253,8 +299,8 @@ def update_prediction_weights(policy_net : SAPAI, target_net : SAPAI, experience
         # Randomly samples from experience replay
         batches = random.sample(experience_replay, config["batch_size"])
         batches = {k: [dic[k] for dic in batches] for k in batches[0]}
-        batches['state_encoding'] = torch.stack(batches['state_encoding']).to(training_device)
-        batches['next_state_encoding'] = torch.stack(batches['next_state_encoding']).to(training_device)
+        batches['state_encoding'] = torch.tensor(np.stack(batches['state_encoding'])).to(training_device)
+        batches['next_state_encoding'] = torch.tensor(np.stack(batches['next_state_encoding'])).to(training_device)
         batches['action'] = np.array(batches["action"], dtype = np.int32)
         batches['reward'] = torch.tensor(batches['reward']).to(training_device)
 
@@ -283,8 +329,10 @@ def update_prediction_weights(policy_net : SAPAI, target_net : SAPAI, experience
 def run_with_loop(net, config, epsilon):
     experience_replay = []
     start_time = time.time()
-    for _ in range(config["max_num_threads"]):
+    for i in range(config["max_num_threads"]):
+    #for i in range(1):
         experience_replay.extend(run_simulation(deepcopy(net), config, epsilon))
+        print(f"Run: {i}")
     elapsed_time = time.time() - start_time
     print(f"Elapsed time (loop): {elapsed_time} seconds")
     print(f"Experience replay length: {len(experience_replay)}")
@@ -314,16 +362,24 @@ def train():
     policy_net = SAPAI(config = config)
     target_net = deepcopy(policy_net)
 
+    eval_results, actions_used = evaluate_model(policy_net, config)
+
+    # Loading weights
+    #policy_net.load_state_dict(torch.load("model_test_12.pt"))
+    #visualize_rollout(policy_net)
+
     # Random action hyperparameters
     epsilon = config["epsilon"]
     epsilon_min = config["epsilon_min"]
     epsilon_decay = config["epsilon_decay"]
 
-    for epoch in range(config["epochs"]):
+    for epoch in range(1, config["epochs"] + 1):
+        print("Epoch: ", epoch)
+        print("Epsilon: ", epsilon)
     
         # Running with multithreading
-        experience_replay = run_with_loop(policy_net, config, epsilon)
-        #experience_replay = run_with_processes(policy_net, config, epsilon)
+        #experience_replay = run_with_loop(policy_net, config, epsilon)
+        experience_replay = run_with_processes(policy_net, config, epsilon)
 
         # Saving experience replay
         #pickle.dump(experience_replay, open("experience_replay_test_32_players.pkl", "wb"))
@@ -337,22 +393,30 @@ def train():
         policy_net = update_prediction_weights(policy_net, target_net, experience_replay, config)
 
         start_time = time.time()
-        eval_results = evaluate_model(policy_net, config)
+        eval_results, actions_used = evaluate_model(policy_net, config)
         print(eval_results)
+        print(actions_used)
         elapsed_time = time.time() - start_time
         print(f"Elapsed time (loop): {elapsed_time} seconds")
 
         if epoch % 2 == 1:
             target_net = deepcopy(policy_net)
+            print("TARGET NET MODEL WEIGHTS UPDATED ON EPOCH: ", epoch)
         
         epsilon = max(epsilon * epsilon_decay, epsilon_min)
 
         # Saving model
         torch.save(policy_net.state_dict(), f"model_test_{epoch}.pt")
+        print("Model saved")
+
+        print()
 
 
 if __name__ == "__main__":
     print(f"Cuda available: {torch.cuda.is_available()}", flush = True)
     print(f"Rollout device used: {rollout_device}", flush = True)
-    print(f"Training device used: {training_device}", flush = True)
+    print(f"Training device used: {training_device}\n", flush = True)
+
+    #test_legal_move_masking()
+
     train()

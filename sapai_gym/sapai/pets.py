@@ -139,8 +139,12 @@ class Pet:
         elif food.name == "food-sleeping-pill":
             self._health = -1000
         elif food.name == "food-canned-food":
-            food.shop.shop_attack += food.attack
-            food.shop.shop_health += food.health
+            if self.shop is not None:
+                self.shop.shop_attack += food.attack
+                self.shop.shop_health += food.health
+            if food.shop is not None:
+                food.shop.shop_attack += food.attack
+                food.shop.shop_health += food.health
         return False
 
     def init_battle(self):

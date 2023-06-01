@@ -1080,6 +1080,9 @@ def TransferStats(apet, apet_idx, teams, te=None, te_idx=None, fixed_targets=Non
         target = fixed_targets
         possible = [fixed_targets]
 
+    if len(target) > 0 and target[0].health == 0: # Nvinden hacky fix
+        target[0].set_health(1)
+
     effect = apet.ability["effect"]
     copy_attack = effect["copyAttack"]
     copy_health = effect["copyHealth"]

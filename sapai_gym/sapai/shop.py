@@ -326,8 +326,8 @@ class Shop(SAPList):
                 )
             )
 
-        self.nslot = self.pslots + self.fslots
-        self.slots = new_slots_pet + new_slots_food
+        self.nslots = self.pslots + self.fslots
+        self.slots = new_slots_pet.extend(new_slots_food)
 
         ### Roll all slots upon update of rules
         self.roll(roll_only_empty=roll_only_empty)

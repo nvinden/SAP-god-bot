@@ -1,4 +1,4 @@
-import torch
+VERBOSE = False
 
 DEFAULT_CONFIGURATION = {
     # Model parameters
@@ -15,16 +15,16 @@ DEFAULT_CONFIGURATION = {
 
     # Random action parameters
     "epsilon": 0.95,
-    "epsilon_decay": 0.80,
-    "epsilon_min": 0.10,
+    "epsilon_decay": 0.99,
+    "epsilon_min": 0.30,
 
     # Training parameters
     "epochs": 20,
     "batch_size": 64,
     "number_of_updates_per_optimization_step": 800,
-    "gamma": 0.9999,
+    "gamma": 0.999,
     "learning_rate": 0.001,
 }
 
-rollout_device = "cuda"
+rollout_device = "cpu"
 training_device = "cuda"

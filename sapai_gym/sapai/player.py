@@ -133,6 +133,7 @@ class Player:
 
         ### Roll shop
         self.shop.turn += 1
+        self.shop.update_shop_rules(self.turn)
         self.shop.roll()
 
         ### Activate start-of-turn triggers after rolling shop
