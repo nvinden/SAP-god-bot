@@ -18,14 +18,14 @@ from sapai.teams import Team
 from sapai.battle import Battle
 from sapai.player import Player, GoldException, WrongObjectException, FullTeamException
 
-from model import SAPAI, N_ACTIONS
-from model_actions import call_action_from_q_index, num_agent_actions, agent_actions_list, action_beginning_index, action_index_to_action_type, create_available_action_mask
-from config import DEFAULT_CONFIGURATION, rollout_device, training_device
+from model import SAPAI
+from model_actions import call_action_from_q_index, num_agent_actions, agent_actions_list, action_beginning_index, action_index_to_action_type, create_available_action_mask, action2index, index2action
+from config import DEFAULT_CONFIGURATION, rollout_device, training_device, N_ACTIONS
 
 # This function runs "number of rollouts" number of games, each preforming the highest Q value action
 # for each player. The function returns the average number of wins for the player, when fighting against.
 # 1-1, 2-2, 3-3, 4-4, 5-5 ... pigs
-def evaluate_model(net : SAPAI, config : dict = None, number_of_rollouts : int = 16, number_of_turns = 10, max_number_of_actions = 15) -> tuple[list, dict]:
+def evaluate_model(net : SAPAI, config : dict = None, number_of_rollouts : int = 16, number_of_turns = 10, max_number_of_actions = 15, epoch = 50) -> tuple[list, dict]:
     net = net.to(rollout_device)
     net.set_device("rollout")
     net.eval()
@@ -44,19 +44,7 @@ def evaluate_model(net : SAPAI, config : dict = None, number_of_rollouts : int =
             if len(active_players) == 0:
                 break
 
-            state_encodings = net.state_to_encoding(active_players)
-            q_value, _ = net(state_encodings)
-
-            action_mask = [create_available_action_mask(player) for player in active_players]
-
-            max_q_action_mask = np.stack(deepcopy(action_mask))
-            max_q_action_mask = torch.tensor(max_q_action_mask, dtype = torch.float32, device = rollout_device).requires_grad_(False)
-
-            # Adding mask to the max q action vector
-            where_zeros = max_q_action_mask < 0.5
-            q_value[where_zeros] = -9999999
-
-            actions_taken = torch.argmax(q_value, dim = 1).cpu().numpy()
+            actions_taken = np.array([get_best_legal_move(player, net, config = config, epoch = epoch) for player in active_players])
 
             action_type_taken_idx = [action_index_to_action_type(action) for action in actions_taken]
             for action_type in action_type_taken_idx: actions_used[action_type] += 1
@@ -66,11 +54,14 @@ def evaluate_model(net : SAPAI, config : dict = None, number_of_rollouts : int =
                 call_action_from_q_index(player, action.item())
 
             # Remove players that have pressed end turn
-            ended_turns = actions_taken != (q_value.shape[-1] - 1)
+            ended_turns = actions_taken != (N_ACTIONS - 1)
             ended_turns = ended_turns.tolist()
             active_players = np.array(active_players)
             active_players = active_players[ended_turns]
             active_players = active_players.tolist()
+
+        for player in players:
+            player.end_turn()
 
         # Battle the players
         win_list = np.array([battle_increasing_pigs(player, max_stats=5) for player in players])
@@ -153,27 +144,30 @@ def action_idx_to_string(action_idx : int) -> str:
     
     return "something_went_wrong"
 
-def visualize_rollout(net: SAPAI):
+def visualize_rollout(net: SAPAI, config : dict):
     net = net.to(rollout_device)
     net.set_device("rollout")
     net.eval()
 
     player = Player()
 
-    while True:
-        state_encoding = net.state_to_encoding([player])
-        q_value, _ = net(state_encoding)
+    epoch = 0
 
-        action_number = torch.argmax(q_value, dim = 1).cpu().numpy()[0]
+    while True:
+        action_number = get_best_legal_move(player, net, config = config, epoch = epoch)
         return_signal = call_action_from_q_index(player, action_number)
 
         action_str = action_idx_to_string(action_number)
+        print("Player:", player)
         print("Action:", action_str)
         print("Return signal:", return_signal)
-        print("Player:", player)
+        print()
+        print()
 
-        if action_number == (q_value.shape[-1] - 1):
-            break
+        if action_number == (N_ACTIONS - 1):
+            player.end_turn()
+            player.start_turn()
+            epoch += 1
 
 def test_legal_move_masking():
     player = Player()
@@ -206,6 +200,44 @@ def test_legal_move_masking():
 
         if random_double_legal_move == N_ACTIONS - 1: # Turn ended
             player.start_turn()
+
+def get_best_legal_move(player : Player, net : SAPAI, config : dict, epoch = 20, epoch_masking = True, mask = None) -> int:
+    state_encodings = net.state_to_encoding(player)
+    q_value, _ = net(state_encodings)
+    q_value = q_value.squeeze(0)
+
+    if mask is None:
+        action_mask = create_available_action_mask(player)
+
+        # if epoch makes turns illegal
+        if epoch_masking:
+            epoch_illegal_mask = create_epoch_illegal_mask(epoch, config)
+            action_mask = action_mask * epoch_illegal_mask
+
+        max_q_action_mask = np.stack(deepcopy(action_mask))
+        max_q_action_mask = torch.tensor(max_q_action_mask, dtype = torch.int32, device = rollout_device).requires_grad_(False)
+    else:
+        max_q_action_mask = torch.tensor(mask.astype(np.int32), dtype = torch.int32, device = rollout_device).requires_grad_(False)
+
+    # Adding mask to the max q action vector
+    where_zeros = max_q_action_mask < 0.5
+    q_value[where_zeros] = -9999999
+
+    action_taken = int(torch.argmax(q_value).cpu().numpy())
+
+    return action_taken
+
+def create_epoch_illegal_mask(epoch, config):
+    action_mask = np.ones(N_ACTIONS)
+    if epoch >= config["illegalize_rolling"][0] and epoch <= config["illegalize_rolling"][1]:
+        action_mask[action_beginning_index[action2index["roll"]]:action_beginning_index[action2index["roll"] + 1]] = 0
+    if epoch >= config["illegalize_freeze_unfreeze"][0] and epoch <= config["illegalize_freeze_unfreeze"][1]:
+        action_mask[action_beginning_index[action2index["freeze"]]:action_beginning_index[action2index["freeze"] + 1]] = 0
+        action_mask[action_beginning_index[action2index["unfreeze"]]:action_beginning_index[action2index["unfreeze"] + 1]] = 0
+    if epoch >= config["illegalize_combine"][0] and epoch <= config["illegalize_combine"][1]:
+        action_mask[action_beginning_index[action2index["combine"]]:action_beginning_index[action2index["combine"] + 1]] = 0
+
+    return action_mask
 
         
     

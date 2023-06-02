@@ -16,7 +16,8 @@ from config import rollout_device, training_device
 
 import numpy as np
 
-N_ACTIONS = 47
+from copy import deepcopy
+import torch
 
 # This dictonary contains all the actions that the agent can take, and
 # the total number of variations of the action
@@ -294,37 +295,42 @@ def call_action_from_q_index(player : Player, q_idx : int) -> str:
 
     assert q_idx >= 0 and q_idx < action_ranges[-1]
 
-    if q_idx == 0: # Roll
-        #print("Rolling")
-        return roll(player)
-    elif q_idx >= action_ranges[0] and q_idx < action_ranges[1]: # Buy pet
-        #print("Buying pet")
-        player_index = q_idx - action_ranges[0]
-        return buy_pet(player, player_index)
-    elif q_idx >= action_ranges[1] and q_idx < action_ranges[2]: # Sell pet
-        #print("Selling pet")
-        player_index = q_idx - action_ranges[1]
-        return sell(player, q_idx - 7)
-    elif q_idx >= action_ranges[2] and q_idx < action_ranges[3]: # Buy food
-        #print("Buying food")
-        player_index = (q_idx - action_ranges[2]) % 5
-        food_index = (q_idx - action_ranges[2]) // 5
-        return buy_food(player, food_index, player_index)
-    elif q_idx >= action_ranges[3] and q_idx < action_ranges[4]: # Combine
-        #print("Combining")
-        player_index = q_idx - action_ranges[3]
-        return combine(player, player_index)
-    elif q_idx >= action_ranges[4] and q_idx < action_ranges[5]: # Freeze
-        #print("Freezing")
-        player_index = q_idx - action_ranges[4]
-        return freeze(player, player_index)
-    elif q_idx >= action_ranges[5] and q_idx < action_ranges[6]: # Unfreeze
-        #print("Unfreezing")
-        player_index = q_idx - action_ranges[5]
-        return unfreeze(player, player_index)
-    elif q_idx >= action_ranges[6] and q_idx < action_ranges[7]: # End turn
-        #print("Ending turn")
-        return end_turn(player)
+    try:
+        if q_idx == 0: # Roll
+            #print("Rolling")
+            return roll(player)
+        elif q_idx >= action_ranges[0] and q_idx < action_ranges[1]: # Buy pet
+            #print("Buying pet")
+            player_index = q_idx - action_ranges[0]
+            return buy_pet(player, player_index)
+        elif q_idx >= action_ranges[1] and q_idx < action_ranges[2]: # Sell pet
+            #print("Selling pet")
+            player_index = q_idx - action_ranges[1]
+            return sell(player, q_idx - 7)
+        elif q_idx >= action_ranges[2] and q_idx < action_ranges[3]: # Buy food
+            #print("Buying food")
+            player_index = (q_idx - action_ranges[2]) % 5
+            food_index = (q_idx - action_ranges[2]) // 5
+            return buy_food(player, food_index, player_index)
+        elif q_idx >= action_ranges[3] and q_idx < action_ranges[4]: # Combine
+            #print("Combining")
+            player_index = q_idx - action_ranges[3]
+            return combine(player, player_index)
+        elif q_idx >= action_ranges[4] and q_idx < action_ranges[5]: # Freeze
+            #print("Freezing")
+            player_index = q_idx - action_ranges[4]
+            return freeze(player, player_index)
+        elif q_idx >= action_ranges[5] and q_idx < action_ranges[6]: # Unfreeze
+            #print("Unfreezing")
+            player_index = q_idx - action_ranges[5]
+            return unfreeze(player, player_index)
+        elif q_idx >= action_ranges[6] and q_idx < action_ranges[7]: # End turn
+            #print("Ending turn")
+            return end_turn(player)
+    except Exception as e:
+        print("Something went wrong in call_action_from_q_index: ", e)
+        player.gold += 1
+        player.roll()
     
     return "something_went_wrong"
 

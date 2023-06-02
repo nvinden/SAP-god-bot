@@ -14,8 +14,8 @@ from sapai.player import Player, GoldException, WrongObjectException, FullTeamEx
 
 from sapai.data import data as ALL_DATA
 
-from config import rollout_device, training_device
-from model_actions import N_ACTIONS, all_items_idx
+from config import rollout_device, training_device, N_ACTIONS
+from model_actions import all_items_idx
 
 # Pet food index numbers:
 pet_name_idx = [k for k, v in ALL_DATA['pets'].items() if k != 'pet-none' and "StandardPack" in v['packs']]
@@ -131,25 +131,30 @@ class SAPAI(nn.Module):
             encoding[batch_no, 0, all_items_idx["current_gold"]] = gold / 10
             encoding[batch_no, 0, all_items_idx["wins"]] = wins / 10
 
+            i = 0
             # Dimension 2: Shop pets
-            for i, pet in enumerate(current_player.shop.pets):
+            for slot in current_player.shop.slots:
+                if slot.slot_type != "pet" or slot.obj.name == "pet-none":
+                    continue
                 enc_col = 1 + i
-                encoding[batch_no, enc_col, all_items_idx["attack"]] = pet.attack / 25.0 - 1.0
-                encoding[batch_no, enc_col, all_items_idx["health"]] = pet.health / 25.0 - 1.0
-                encoding[batch_no, enc_col, all_items_idx["cost"]] = 3.0 / 3.0 #TEMP: pet.cost / 3.0
-                encoding[batch_no, enc_col, all_items_idx["level"]] = pet.level / 3.0 + pet.experience / (6.0 if pet.level == 1 else 9.0)
+                encoding[batch_no, enc_col, all_items_idx["attack"]] = slot.obj.attack / 25.0 - 1.0
+                encoding[batch_no, enc_col, all_items_idx["health"]] = slot.obj.health / 25.0 - 1.0
+                encoding[batch_no, enc_col, all_items_idx["cost"]] = slot.cost / 3.0 #TEMP: pet.cost / 3.0
+                encoding[batch_no, enc_col, all_items_idx["level"]] = slot.obj.level / 3.0 + slot.obj.experience / (6.0 if slot.obj.level == 1 else 9.0)
+                encoding[batch_no, enc_col, all_items_idx[slot.obj.name]] = 1.0
+                i += 1
 
-                encoding[batch_no, enc_col, all_items_idx[pet.name]] = 1.0
-
-
+            i = 0
             # Dimension 3: Shop foods
-            for i, food in enumerate(current_player.shop.foods):
+            for slot in current_player.shop.slots:
+                if slot.slot_type != "food":
+                    continue
                 enc_col = 7 + i
-                encoding[batch_no, enc_col, all_items_idx["attack"]] = food.attack / 25.0 - 1.0
-                encoding[batch_no, enc_col, all_items_idx["health"]] = food.health / 25.0 - 1.0
-                encoding[batch_no, enc_col, all_items_idx["cost"]] = 3.0 / 3.0 #TEMP: pet.cost / 3.0
-
-                encoding[batch_no, enc_col, all_items_idx[food.name]] = 1.0
+                encoding[batch_no, enc_col, all_items_idx["attack"]] = slot.obj.attack
+                encoding[batch_no, enc_col, all_items_idx["health"]] = slot.obj.health
+                encoding[batch_no, enc_col, all_items_idx["cost"]] = slot.cost / 3.0 #TEMP: pet.cost / 3.0
+                encoding[batch_no, enc_col, all_items_idx[slot.obj.name]] = 1.0
+                i += 1
 
             # Dimension 4: Team
             for i, pet in enumerate(current_player.team):

@@ -138,7 +138,10 @@ class Player:
 
         ### Activate start-of-turn triggers after rolling shop
         for slot in self.team:
-            slot._pet.sot_trigger()
+            try:
+                slot._pet.sot_trigger()
+            except Exception as e:
+                print(f"Error in start of turn triggers: {e}")
 
         return ()
 
