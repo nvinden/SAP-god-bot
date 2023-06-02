@@ -12,6 +12,8 @@ from sapai.shop import Shop
 from sapai.teams import Team
 from sapai.player import Player, GoldException, WrongObjectException, FullTeamException
 
+import numpy as np
+
 from sapai.data import data as ALL_DATA
 
 from config import rollout_device, training_device, N_ACTIONS
@@ -112,6 +114,8 @@ class SAPAI(nn.Module):
         # If player is a list of players
         elif isinstance(player, list):
             player_list = player
+        elif isinstance(player, np.ndarray):
+            player_list = player.tolist()
         else:
             raise Exception("player is not a player or a list of players")
 
@@ -119,17 +123,13 @@ class SAPAI(nn.Module):
 
         for batch_no, current_player in enumerate(player_list):
             # Dimension 1: Turn number, player health remaining, gold and wins
-            turn_number = current_player.turn
-            player_lives = current_player.lives
-            gold = current_player.gold
-            wins = current_player.wins
 
-            encoding[batch_no, 0, all_items_idx['turn_number']] = turn_number / 10
+            encoding[batch_no, 0, all_items_idx['turn_number']] = current_player.turn / 10
             # TODO: When changes are made to the game to update to 0.26
             # fix this to normalize to 5 instead of 10
-            encoding[batch_no, 0, all_items_idx["player_lives_remaining"]] = player_lives / 10
-            encoding[batch_no, 0, all_items_idx["current_gold"]] = gold / 10
-            encoding[batch_no, 0, all_items_idx["wins"]] = wins / 10
+            encoding[batch_no, 0, all_items_idx["player_lives_remaining"]] = current_player.lives / 10
+            encoding[batch_no, 0, all_items_idx["current_gold"]] = current_player.gold / 10
+            encoding[batch_no, 0, all_items_idx["wins"]] = current_player.wins / 10
 
             i = 0
             # Dimension 2: Shop pets
@@ -137,8 +137,8 @@ class SAPAI(nn.Module):
                 if slot.slot_type != "pet" or slot.obj.name == "pet-none":
                     continue
                 enc_col = 1 + i
-                encoding[batch_no, enc_col, all_items_idx["attack"]] = slot.obj.attack / 25.0 - 1.0
-                encoding[batch_no, enc_col, all_items_idx["health"]] = slot.obj.health / 25.0 - 1.0
+                encoding[batch_no, enc_col, all_items_idx["attack"]] = slot.obj.attack / 50.0
+                encoding[batch_no, enc_col, all_items_idx["health"]] = slot.obj.health / 50.0
                 encoding[batch_no, enc_col, all_items_idx["cost"]] = slot.cost / 3.0 #TEMP: pet.cost / 3.0
                 encoding[batch_no, enc_col, all_items_idx["level"]] = slot.obj.level / 3.0 + slot.obj.experience / (6.0 if slot.obj.level == 1 else 9.0)
                 encoding[batch_no, enc_col, all_items_idx[slot.obj.name]] = 1.0
@@ -150,8 +150,8 @@ class SAPAI(nn.Module):
                 if slot.slot_type != "food":
                     continue
                 enc_col = 7 + i
-                encoding[batch_no, enc_col, all_items_idx["attack"]] = slot.obj.attack
-                encoding[batch_no, enc_col, all_items_idx["health"]] = slot.obj.health
+                encoding[batch_no, enc_col, all_items_idx["attack"]] = slot.obj.attack / 3.0
+                encoding[batch_no, enc_col, all_items_idx["health"]] = slot.obj.health / 3.0
                 encoding[batch_no, enc_col, all_items_idx["cost"]] = slot.cost / 3.0 #TEMP: pet.cost / 3.0
                 encoding[batch_no, enc_col, all_items_idx[slot.obj.name]] = 1.0
                 i += 1
@@ -163,8 +163,8 @@ class SAPAI(nn.Module):
                 
                 pet = pet.pet
                 enc_col = 10 + i
-                encoding[batch_no, enc_col, all_items_idx["attack"]] = pet.attack / 25.0 - 1.0
-                encoding[batch_no, enc_col, all_items_idx["health"]] = pet.health / 25.0 - 1.0
+                encoding[batch_no, enc_col, all_items_idx["attack"]] = pet.attack / 50.0
+                encoding[batch_no, enc_col, all_items_idx["health"]] = pet.health / 50.0
                 encoding[batch_no, enc_col, all_items_idx["cost"]] = 1.0 / 3.0  if pet.name not in ["pet-pig"] else 2.0 / 3.0 # Allowing pig to be sold for 2 gold
                 encoding[batch_no, enc_col, all_items_idx["level"]] = pet.level / 3.0 + pet.experience / (6.0 if pet.level == 1 else 9.0)
 

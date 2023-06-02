@@ -10,9 +10,12 @@ DEFAULT_CONFIGURATION = {
     # Rollout parameters
     "players_per_simulation": 20,
     "action_limit": 20, # Number of actions a player can do in a turn before they get skipped
-    "number_of_battles_per_player_turn": 31,
+    "number_of_battles_per_player_turn": 5,
     "number_of_battles_per_simulation": 20,
-    "max_num_threads": 16,
+    "max_num_threads": 24,
+
+    # Evaluation parameters
+    "number_of_evaluation_turns": 15,
 
     # Random action parameters
     "epsilon": 0.95,
@@ -22,9 +25,10 @@ DEFAULT_CONFIGURATION = {
     # Training parameters
     "epochs": 100,
     "batch_size": 64,
-    "number_of_updates_per_optimization_step": 6000,
+    "num_updates_per_sample": 8.0,
     "gamma": 0.999,
-    "learning_rate": 0.001,
+    "learning_rate": 0.003,
+    "win_percentage_threshold_past_teams": 0.55,
 
     # Action Illegalization parameters
     "illegalize_rolling": (0, 10),
@@ -36,5 +40,5 @@ DEFAULT_CONFIGURATION = {
     "allow_stat_increase_as_reward": True
 }
 
-rollout_device = "cpu"
+rollout_device = "cuda"
 training_device = "cuda"

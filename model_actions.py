@@ -332,7 +332,7 @@ def call_action_from_q_index(player : Player, q_idx : int) -> str:
         player.gold += 1
         player.roll()
     
-    return "something_went_wrong"
+    return "success"
 
 def auto_order_team(player : Player) -> Player:
     # Orders pets from 1. Bias, 2. Total stats (attack + health)

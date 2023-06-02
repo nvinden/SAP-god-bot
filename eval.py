@@ -21,11 +21,12 @@ from sapai.player import Player, GoldException, WrongObjectException, FullTeamEx
 from model import SAPAI
 from model_actions import call_action_from_q_index, num_agent_actions, agent_actions_list, action_beginning_index, action_index_to_action_type, create_available_action_mask, action2index, index2action
 from config import DEFAULT_CONFIGURATION, rollout_device, training_device, N_ACTIONS
+from past_teams import PastTeamsOrganizer
 
 # This function runs "number of rollouts" number of games, each preforming the highest Q value action
 # for each player. The function returns the average number of wins for the player, when fighting against.
 # 1-1, 2-2, 3-3, 4-4, 5-5 ... pigs
-def evaluate_model(net : SAPAI, config : dict = None, number_of_rollouts : int = 16, number_of_turns = 10, max_number_of_actions = 15, epoch = 50) -> tuple[list, dict]:
+def evaluate_model(net : SAPAI, pt_organizer : PastTeamsOrganizer, epoch : int, config : dict = None, number_of_rollouts : int = 25, max_number_of_actions = 20) -> tuple[list, dict]:
     net = net.to(rollout_device)
     net.set_device("rollout")
     net.eval()
@@ -33,12 +34,17 @@ def evaluate_model(net : SAPAI, config : dict = None, number_of_rollouts : int =
     if config is None:
         config = DEFAULT_CONFIGURATION
 
-    players = [Player() for _ in range(number_of_rollouts)]
+    if epoch % 3 == 0:
+        players = [Player() for _ in range(number_of_rollouts)]
+    else:
+        players = [Player() for _ in range(5)]
     results = []
     actions_used = {action : 0 for action in agent_actions_list}
 
+    past_player_win_percetages = []
+
     # For each turn
-    for turn_number in range(number_of_turns):
+    for turn_number in range(config["number_of_evaluation_turns"]):
         active_players = [player for player in players]
         for action_number in range(max_number_of_actions):
             if len(active_players) == 0:
@@ -63,17 +69,26 @@ def evaluate_model(net : SAPAI, config : dict = None, number_of_rollouts : int =
         for player in players:
             player.end_turn()
 
-        # Battle the players
-        win_list = np.array([battle_increasing_pigs(player, max_stats=5) for player in players])
+        # Battle past players
+        if epoch % 3 == 0:
+            past_teams_win_percentage = [pt_organizer.battle_past_teams(player.team, turn_number, number_of_rollouts) for player in players]
+            past_teams_win_percentage = np.mean(past_teams_win_percentage)
+            past_player_win_percetages.append(past_teams_win_percentage)
+
+        # Battle the pigs
+        win_list = np.array([battle_increasing_pigs(player, max_stats=5) for player in np.array(players)[:5]])
         avg_wins = np.mean(win_list)
 
         # Next Turn
         for player in players:
+            pt_organizer.add_on_deck(deepcopy(player.team), turn_number)
             player.start_turn()
 
         results.append(avg_wins)
 
-    return results, actions_used
+    if epoch % 3 == 0:
+        return results, actions_used, past_player_win_percetages
+    return results, actions_used, None
 
 def battle_increasing_pigs(player : Player, max_stats : 50) -> int:
     n_wins = -1
