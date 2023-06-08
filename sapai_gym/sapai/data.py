@@ -8989,8 +8989,8 @@ data = {
             },
             "packs": ["StandardPack", "ExpansionPack1"],
             "tier": "Summoned",
-            "baseAttack": "?",
-            "baseHealth": "?",
+            "baseAttack": 1,
+            "baseHealth": 1,
         },
         "pet-bus": {
             "name": "Bus",
@@ -9002,8 +9002,8 @@ data = {
             },
             "packs": ["StandardPack", "ExpansionPack1"],
             "tier": "Summoned",
-            "baseAttack": "?",
-            "baseHealth": "?",
+            "baseAttack": 5,
+            "baseHealth": 5,
             "status": "status-splash-attack",
         },
         "pet-zombie-fly": {
@@ -9016,8 +9016,8 @@ data = {
             },
             "packs": ["StandardPack"],
             "tier": "Summoned",
-            "baseAttack": "?",
-            "baseHealth": "?",
+            "baseAttack": 2,
+            "baseHealth": 2,
         },
         "pet-dirty-rat": {
             "name": "Dirty Rat",
@@ -9042,7 +9042,7 @@ data = {
             },
             "packs": ["StandardPack", "ExpansionPack1"],
             "tier": "Summoned",
-            "baseAttack": "?",
+            "baseAttack": 1,
             "baseHealth": 1,
         },
         "pet-ram": {
@@ -9055,8 +9055,8 @@ data = {
             },
             "packs": ["StandardPack", "ExpansionPack1"],
             "tier": "Summoned",
-            "baseAttack": "?",
-            "baseHealth": "?",
+            "baseAttack": 2,
+            "baseHealth": 2,
         },
         "pet-butterfly": {
             "name": "Butterfly",

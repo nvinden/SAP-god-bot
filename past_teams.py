@@ -10,11 +10,13 @@ from sapai.teams import Team
 from sapai.player import Player
 from sapai.battle import Battle
 
+from model_actions import auto_order_team
+
 import numpy as np
 
 
 class PastTeamsOrganizer():
-    def __init__(self, config, max_past_teams = 300):
+    def __init__(self, config, max_past_teams = 30):
         self.config = config
         self.active_past_teams = {i : deque([], maxlen=max_past_teams) for i in range(max(config["number_of_evaluation_turns"], config["number_of_battles_per_simulation"]))}
         self.on_deck_past_teams = {i : deque([], maxlen=max_past_teams) for i in range(max(config["number_of_evaluation_turns"], config["number_of_battles_per_simulation"]))}
@@ -33,6 +35,11 @@ class PastTeamsOrganizer():
             if len(player_team.filled) > 0: return 1.0
             else: return 0.0
 
+        # Reordering the player team
+        temp_player = Player(team = player_team)
+        auto_order_team(temp_player)
+        player_team = temp_player.team
+
         num_battles = min(num_battles, len(self.active_past_teams[turn_number]))
 
         wins = 0
@@ -47,6 +54,7 @@ class PastTeamsOrganizer():
             if winner == 0: wins += 1
             elif winner == 2: draws += 1
 
+        if (num_battles - draws) <= 0: return 0.0
         return wins / (num_battles - draws)
 
     def battle(self, player_team : Team, opponent_team : Team):
@@ -69,4 +77,37 @@ class PastTeamsOrganizer():
     
     def update_teams(self):
         self.active_past_teams = self.on_deck_past_teams
-        self.on_deck_past_teams = defaultdict(list)
+        self.on_deck_past_teams = {i : deque([], maxlen=self.max_past_teams) for i in range(max(self.config["number_of_evaluation_turns"], self.config["number_of_battles_per_simulation"]))}
+
+    def create_random_samples_clone(self, max_past_teams : int):
+        pt_ortanizer_out = PastTeamsOrganizer(self.config, max_past_teams = max_past_teams)
+
+        for idx, team_list in self.on_deck_past_teams.items():
+            new_team_list = random.sample(team_list, min(max_past_teams, len(team_list)))
+            for team in new_team_list:
+                pt_ortanizer_out.add_on_deck(team, idx)
+
+        for idx, team_list in self.active_past_teams.items():
+            new_team_list = random.sample(team_list, min(max_past_teams, len(team_list)))
+            for team in new_team_list:
+                pt_ortanizer_out.active_past_teams[idx].append(team)
+        
+        return pt_ortanizer_out
+    
+    def is_active_teams(self):
+        for i in range(max(self.config["number_of_evaluation_turns"], self.config["number_of_battles_per_simulation"])):
+            if len(self.active_past_teams[i]) > 0: return True
+        return False
+
+    def set_new_maxlen(self, new_maxlen : int):
+        self.max_past_teams = new_maxlen
+
+        new_active_past_teams = {i : deque([], maxlen=new_maxlen) for i in range(max(self.config["number_of_evaluation_turns"], self.config["number_of_battles_per_simulation"]))}
+        new_on_deck_past_teams = {i : deque([], maxlen=new_maxlen) for i in range(max(self.config["number_of_evaluation_turns"], self.config["number_of_battles_per_simulation"]))}
+
+        for i in range(max(self.config["number_of_evaluation_turns"], self.config["number_of_battles_per_simulation"])):
+            new_active_past_teams[i].extend(self.active_past_teams[i])
+            new_on_deck_past_teams[i].extend(self.on_deck_past_teams[i])
+
+        self.active_past_teams = new_active_past_teams
+        self.on_deck_past_teams = new_on_deck_past_teams

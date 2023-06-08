@@ -5,3 +5,7 @@ sapai_gym/sapai/__pycache__
 # Data
 *.pkl
 *.pt
+*.pth
+
+#wandb
+wandb

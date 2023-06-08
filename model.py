@@ -17,39 +17,7 @@ import numpy as np
 from sapai.data import data as ALL_DATA
 
 from config import rollout_device, training_device, N_ACTIONS
-from model_actions import all_items_idx
-
-# Pet food index numbers:
-pet_name_idx = [k for k, v in ALL_DATA['pets'].items() if k != 'pet-none' and "StandardPack" in v['packs']]
-pet_name_idx = {k : i + len(list(all_items_idx)) for i, k in enumerate(pet_name_idx)}
-number_of_pets = len(pet_name_idx)
-
-pet_food_idx = [k for k, v in ALL_DATA['foods'].items() if k != 'food-none' and "StandardPack" in v['packs']]
-pet_food_idx = {k : i + number_of_pets + len(list(all_items_idx)) for i, k in enumerate(pet_food_idx)}
-number_of_foods = len(pet_food_idx)
-
-pet_status_idx = [k for k, v in ALL_DATA['statuses'].items() if k != 'status-none']
-pet_status_idx = {k : i + number_of_pets + number_of_foods + len(list(all_items_idx)) for i, k in enumerate(pet_status_idx)}
-number_of_statuses = len(pet_status_idx)
-
-# All items together
-all_items_idx.update(pet_name_idx)
-all_items_idx.update(pet_food_idx)
-all_items_idx.update(pet_status_idx)
-number_of_items = len(all_items_idx)
-
-# status to food, and food to status
-status_to_food = {
-    'status-honey-bee':'food-honey',
-    'status-bone-attack':'food-meat-bone',
-    'status-garlic-armor':'food-garlic',
-    'status-splash-attack':'food-chili',
-    'status-melon-armor':'food-melon',
-    'status-extra-life':'food-mushroom',
-    'status-steak-attack':'food-steak',
-}
-
-food_to_status = {v : k for k, v in status_to_food.items()}
+from model_actions import *
 
 class SAPAI(nn.Module):
     def __init__(self, config = None, phase : str = "rollout"):
@@ -65,14 +33,14 @@ class SAPAI(nn.Module):
         self.config = config
 
         # Round up number_of_items so it is divisable by self.config['nhead']
-        self.d_model = number_of_items + (self.config['nhead'] - number_of_items % self.config['nhead'])
+        self.n_tokens = 15
+        self.d_model = number_of_items + self.n_tokens + (self.config['nhead'] - (number_of_items + self.n_tokens) % self.config['nhead'])
 
         # Initializing the neural network
         transformer_encoder_layer = nn.TransformerEncoderLayer(d_model = self.d_model, nhead = self.config['nhead'], batch_first = True).to(self.get_device())
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer = transformer_encoder_layer, num_layers = self.config['num_layers']).to(self.get_device())
 
-        self.actions = nn.Linear(in_features = self.d_model * 15, out_features = N_ACTIONS).to(self.get_device())
-        self.v = nn.Linear(in_features = self.d_model * 15, out_features = 1).to(self.get_device())
+        self.actions = nn.Linear(in_features = self.d_model * self.n_tokens, out_features = N_ACTIONS).to(self.get_device())
 
     def set_device(self, phase : str):
         assert phase == "rollout" or phase == "training"
@@ -85,8 +53,6 @@ class SAPAI(nn.Module):
             self.to(training_device)
         else:
             raise Exception("phase is not rollout or training")
-        
-
 
     def get_device(self):
         if self.phase == "rollout":
@@ -97,15 +63,17 @@ class SAPAI(nn.Module):
             raise Exception("phase is not rollout or training")
         
 
-    def forward(self, x : torch.FloatTensor) -> tuple[torch.FloatTensor, torch.FloatTensor]:
+    def forward(self, x : torch.FloatTensor, headless : bool = False) -> tuple[torch.FloatTensor, torch.FloatTensor]:
         x = x.to(self.get_device())
         out_encoder = self.transformer_encoder(x)
         out_encoder = out_encoder.reshape(out_encoder.shape[0], -1)
 
-        actions = self.actions(out_encoder)
-        v = self.v(out_encoder)
+        if headless:
+            return out_encoder
 
-        return actions, v
+        actions = self.actions(out_encoder)
+
+        return actions
 
     def state_to_encoding(self, player) -> torch.FloatTensor:
         # If player is a player
@@ -119,7 +87,8 @@ class SAPAI(nn.Module):
         else:
             raise Exception("player is not a player or a list of players")
 
-        encoding = torch.zeros(size = (len(player_list), 15, self.d_model), dtype = torch.float32).to(self.get_device())
+        encoding = torch.zeros(size = (len(player_list), self.n_tokens, self.d_model - self.n_tokens), dtype = torch.float32).to(self.get_device())
+        encoding -= 1.0
 
         for batch_no, current_player in enumerate(player_list):
             # Dimension 1: Turn number, player health remaining, gold and wins
@@ -156,6 +125,7 @@ class SAPAI(nn.Module):
                 encoding[batch_no, enc_col, all_items_idx[slot.obj.name]] = 1.0
                 i += 1
 
+            i = 0
             # Dimension 4: Team
             for i, pet in enumerate(current_player.team):
                 if i not in current_player.team.filled:
@@ -174,6 +144,14 @@ class SAPAI(nn.Module):
                 if pet.status in status_to_food:
                     encoding[batch_no, enc_col, all_items_idx[status_to_food[pet.status]]] = 1.0
 
-        return encoding
+        positional_encodings = self.get_positional_encodings(len(player_list))
+        encoding = torch.cat((positional_encodings, encoding), dim = 2)
 
+        return encoding
+    
+    def get_positional_encodings(self, batch_size) -> torch.FloatTensor:
+        positional_encodings = torch.zeros(size = (batch_size, self.n_tokens, self.n_tokens), dtype = torch.float32).to(self.get_device())
+        for i in range(self.n_tokens):
+            positional_encodings[:, i, i] = 1.0
+        return positional_encodings
                 

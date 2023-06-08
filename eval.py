@@ -19,7 +19,7 @@ from sapai.battle import Battle
 from sapai.player import Player, GoldException, WrongObjectException, FullTeamException
 
 from model import SAPAI
-from model_actions import call_action_from_q_index, num_agent_actions, agent_actions_list, action_beginning_index, action_index_to_action_type, create_available_action_mask, action2index, index2action
+from model_actions import call_action_from_q_index, num_agent_actions, agent_actions_list, action_beginning_index, action_index_to_action_type, create_available_action_mask, action2index,idx2pet, idx2food
 from config import DEFAULT_CONFIGURATION, rollout_device, training_device, N_ACTIONS
 from past_teams import PastTeamsOrganizer
 
@@ -46,6 +46,7 @@ def evaluate_model(net : SAPAI, pt_organizer : PastTeamsOrganizer, epoch : int, 
     # For each turn
     for turn_number in range(config["number_of_evaluation_turns"]):
         active_players = [player for player in players]
+        active_player_indexes = [i for i in range(len(players))]
         for action_number in range(max_number_of_actions):
             if len(active_players) == 0:
                 break
@@ -57,13 +58,18 @@ def evaluate_model(net : SAPAI, pt_organizer : PastTeamsOrganizer, epoch : int, 
 
             # For each action
             for player, action in zip(active_players, actions_taken):
-                call_action_from_q_index(player, action.item())
+                try:
+                    if action != N_ACTIONS - 1:
+                        call_action_from_q_index(player, action.item())
+                except:
+                    player.gold += 1
+                    player.roll()
 
             # Remove players that have pressed end turn
-            ended_turns = actions_taken != (N_ACTIONS - 1)
-            ended_turns = ended_turns.tolist()
+            not_ended_turns = actions_taken != (N_ACTIONS - 1)
+            not_ended_turns = not_ended_turns.tolist()
             active_players = np.array(active_players)
-            active_players = active_players[ended_turns]
+            active_players = active_players[not_ended_turns]
             active_players = active_players.tolist()
 
         for player in players:
@@ -76,7 +82,7 @@ def evaluate_model(net : SAPAI, pt_organizer : PastTeamsOrganizer, epoch : int, 
             past_player_win_percetages.append(past_teams_win_percentage)
 
         # Battle the pigs
-        win_list = np.array([battle_increasing_pigs(player, max_stats=5) for player in np.array(players)[:5]])
+        win_list = np.array([battle_increasing_pigs(player, max_stats=25) for player in np.array(players)[:5]])
         avg_wins = np.mean(win_list)
 
         # Next Turn
@@ -102,15 +108,22 @@ def battle_increasing_pigs(player : Player, max_stats : 50) -> int:
     if result == 0: # Player won
         n_wins += 1
 
-
     for i in range(1, max_stats + 1):
         pig_team = _create_pig_team(i)
         
-        battle = Battle(player.team, pig_team)
-        result = battle.battle()
+        try:
+            battle = Battle(player.team, pig_team)
+            result = battle.battle()
+        except Exception as e:
+            print(e)
+            print(player.team)
+            print(pig_team)
+            result = 1
 
         if result == 0: # Player won
-            n_wins = 1
+            n_wins += 1
+        elif result == 1: # Player lost
+            break
     
     return n_wins
             
@@ -137,23 +150,24 @@ def action_idx_to_string(action_idx : int) -> str:
         return "Rolled"
     elif action_idx >= ranges[0] and action_idx < ranges[1]: # Buy pet
         player_index = action_idx - ranges[0]
-        return f"Bought pet at index {player_index}"
+        return f"Bought {idx2pet[player_index]}"
     elif action_idx >= ranges[1] and action_idx < ranges[2]: # Sell pet
         player_index = action_idx - ranges[1]
-        return f"Sold pet at index {player_index}"
+        return f"Sold {idx2pet[player_index]}"
     elif action_idx >= ranges[2] and action_idx < ranges[3]: # Buy food
-        player_index = (action_idx - ranges[2]) % 5
-        food_index = (action_idx - ranges[2]) // 5
-        return f"Bought food at index {food_index} and put it on pet at index {player_index}"
+        player_index = action_idx - ranges[2]
+        return f"Bought {idx2food[player_index]}"
     elif action_idx >= ranges[3] and action_idx < ranges[4]: # Combine
         player_index = action_idx - ranges[3]
-        return f"Combined pets at index {player_index}"
+        return f"Combined {idx2pet[player_index]}"
     elif action_idx >= ranges[4] and action_idx < ranges[5]: # Freeze
         player_index = action_idx - ranges[4]
-        return f"Froze pet at index {player_index}"
+        if player_index < len(idx2pet): return f"Froze {idx2pet[player_index]}"
+        else: return f"Froze {idx2food[player_index - len(idx2pet)]}"
     elif action_idx >= ranges[5] and action_idx < ranges[6]: # Unfreeze
         player_index = action_idx - ranges[5]
-        return f"Unfroze pet at index {player_index}"
+        if player_index < len(idx2pet): return f"Froze {idx2pet[player_index]}"
+        else: return f"Unfroze {idx2food[player_index - len(idx2pet)]}"
     elif action_idx >= ranges[6] and action_idx < ranges[7]: # End turn
         return "Ended turn"
     
@@ -166,17 +180,20 @@ def visualize_rollout(net: SAPAI, config : dict):
 
     player = Player()
 
-    epoch = 0
+    epoch = 1
 
     while True:
-        action_number = get_best_legal_move(player, net, config = config, epoch = epoch)
+        action_number, q_values = get_best_legal_move(player, net, config = config, epoch = epoch, return_q_values = True)
         return_signal = call_action_from_q_index(player, action_number)
+
+        top_values = torch.topk(q_values, 5)
+        top_values = [f"{top_values[0][i].item():.2f} {action_idx_to_string(top_values[1][i].item())}" for i in range(5)]
 
         action_str = action_idx_to_string(action_number)
         print("Player:", player)
         print("Action:", action_str)
-        print("Return signal:", return_signal)
-        print()
+        print("Top Moves:", top_values)
+        print("Top actions:")
         print()
 
         if action_number == (N_ACTIONS - 1):
@@ -186,6 +203,25 @@ def visualize_rollout(net: SAPAI, config : dict):
 
 def test_legal_move_masking():
     player = Player()
+    player.start_turn()
+    player.start_turn()
+    player.start_turn()
+    player.start_turn()
+    player.start_turn()
+    player.start_turn()
+    player.start_turn()
+    player.start_turn()
+    player.start_turn()
+    player.start_turn()
+    player.start_turn()
+
+    player.gold += 17
+    player.buy_pet(0)
+    player.team.append(deepcopy(player.team.slots[0]))
+    player.team.append(deepcopy(player.team.slots[0]))
+    player.roll()
+    player.buy_pet(0)
+    player.buy_pet(0)
 
     while(True):
         # Legal moves mask
@@ -216,9 +252,9 @@ def test_legal_move_masking():
         if random_double_legal_move == N_ACTIONS - 1: # Turn ended
             player.start_turn()
 
-def get_best_legal_move(player : Player, net : SAPAI, config : dict, epoch = 20, epoch_masking = True, mask = None) -> int:
+def get_best_legal_move(player : Player, net : SAPAI, config : dict, epoch = 20, epoch_masking = True, mask = None, return_q_values = False) -> int:
     state_encodings = net.state_to_encoding(player)
-    q_value, _ = net(state_encodings)
+    q_value = net(state_encodings)
     q_value = q_value.squeeze(0)
 
     if mask is None:
@@ -240,6 +276,8 @@ def get_best_legal_move(player : Player, net : SAPAI, config : dict, epoch = 20,
 
     action_taken = int(torch.argmax(q_value).cpu().numpy())
 
+    if return_q_values:
+        return action_taken, q_value
     return action_taken
 
 def create_epoch_illegal_mask(epoch, config):

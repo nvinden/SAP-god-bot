@@ -13,6 +13,15 @@
             "justMyCode": true,
             //"args": ["-Xfrozen_modules=off"],
             "pythonArgs": ["-Xfrozen_modules=off"],
+        },
+        {
+            "name": "Pretrain Model",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/pretrain_model.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            //"args": ["-Xfrozen_modules=off"],
         }
     ]
 }

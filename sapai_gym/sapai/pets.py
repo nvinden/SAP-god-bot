@@ -84,7 +84,7 @@ class Pet:
             return self._attack
         return min(
             status.apply_attack_dict[self.status](
-                self._attack + self._until_end_of_battle_attack_buff
+                int(self._attack) + int(self._until_end_of_battle_attack_buff)
             ),
             50,
         )

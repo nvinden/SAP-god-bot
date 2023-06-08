@@ -11,6 +11,7 @@ import torch.optim as optim
 import numpy as np
 from collections import defaultdict
 from itertools import chain
+import datetime
 import pickle
 
 import dask
@@ -23,7 +24,7 @@ sys.path.append(current_directory + '/sapai_gym')
 
 from model_actions import *
 from model import SAPAI
-from config import DEFAULT_CONFIGURATION, rollout_device, training_device, VERBOSE, N_ACTIONS
+from config import DEFAULT_CONFIGURATION, rollout_device, training_device, VERBOSE, N_ACTIONS, USE_WANDB
 from eval import evaluate_model, visualize_rollout, test_legal_move_masking, get_best_legal_move, create_epoch_illegal_mask
 from past_teams import PastTeamsOrganizer
 
@@ -32,6 +33,8 @@ from sapai.teams import Team
 from sapai.player import Player
 from sapai.battle import Battle
 import math
+
+import wandb
 
 # This process can be ran on multiple threads, it will run many simulations, and return the results
 def run_simulation(net : SAPAI, config : dict, epsilon : float, epoch : int, pt_organizer : PastTeamsOrganizer) -> list:
@@ -124,7 +127,7 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float, epoch : int, pt_
                     "state_encoding": current_state_encodings[player_number_to_i[player_number]].cpu().numpy(),
                     "action": action.item(),
                     "reward": reward,
-                    #"next_state": next_state,
+                    "next_state": deepcopy(player),
                     "next_state_encoding": torch.squeeze(next_state_encoding).cpu().numpy(),
                 })
 
@@ -147,6 +150,7 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float, epoch : int, pt_
                 "action": N_ACTIONS - 1,
                 "reward": None,
                 "next_state_encoding": deepcopy(encoding_next_state),
+                "next_state": deepcopy(player),
             })
 
         ##########
@@ -196,8 +200,8 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float, epoch : int, pt_
                 #    elif action_replay["action"] >= action_beginning_index[action2index["sell"]] and action_replay["action"] < action_beginning_index[action2index["sell"]] + num_agent_actions["sell"]:
                 #        action_replay["reward"] += 0.1
 
-                if action_replay["action"] >= action_beginning_index[action2index["combine"]] and action_replay["action"] < action_beginning_index[action2index["combine"]] + num_agent_actions["combine"]:
-                        action_replay["reward"] += 1.0
+                if config['allow_combine_reward'] and action_replay["action"] >= action_beginning_index[action2index["combine"]] and action_replay["action"] < action_beginning_index[action2index["combine"]] + num_agent_actions["combine"]:
+                    action_replay["reward"] += 1.0
 
                 if not config["allow_negative_rewards"]:
                     action_replay["reward"] = max(0, action_replay["reward"])
@@ -208,55 +212,79 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float, epoch : int, pt_
         for player in player_list:
             player.start_turn()
 
-    return local_experience_replay
+    return local_experience_replay, deepcopy(pt_organizer)
 
 def preform_battles(player_list, config, turn_number, pt_organizer : PastTeamsOrganizer): 
     # Randomly pair players together, and battle them, recording the results
     player_end_turn_rewards = [0 for _ in range(config["players_per_simulation"])]
     player_total_match_results = [defaultdict(int) for _ in range(config["players_per_simulation"])]
     
-    # Auto ordering team before battle
-    for index, player in enumerate(player_list):
-        auto_order_team(player)
+    is_teams_on_deck = pt_organizer.is_active_teams()
 
-        for opponent_team in pt_organizer.sample(config["number_of_battles_per_player_turn"], turn_number):
-            winner = pt_organizer.battle(deepcopy(player.team), opponent_team)
+    if is_teams_on_deck:
+        # Auto ordering team before battle
+        for index, player in enumerate(player_list):
+            auto_order_team(player)
 
-            # Record the results
-            if winner == 0: # Player won
-                player_end_turn_rewards[index] += result_string_to_rewards["round_win"]
-                player_total_match_results[index]["wins"] += 1
-            elif winner == 1: # Opponent won
-                player_end_turn_rewards[index] += result_string_to_rewards["round_loss"]
-                player_total_match_results[index]["losses"] += 1
-            else: # Draw
-                player_total_match_results[index]["draws"] += 1
+            for opponent_team in pt_organizer.sample(config["number_of_battles_per_player_turn"], turn_number):
+                winner = pt_organizer.battle(deepcopy(player.team), opponent_team)
 
-    # BATTLING EMPTY TEAMS
-    for i, player in enumerate(player_list):
-        if len(player.team.filled) > 0: # Player won
-            player_end_turn_rewards[i] += result_string_to_rewards["round_win"] / 2.5 * config["number_of_battles_per_player_turn"]
-        else: # Opponent won or draw
-            player_end_turn_rewards[i] += result_string_to_rewards["round_loss"] / 2.5 * config["number_of_battles_per_player_turn"]
+                # Record the results
+                if winner == 0: # Player won
+                    player_end_turn_rewards[index] += result_string_to_rewards["round_win"]
+                    player_total_match_results[index]["wins"] += 1
+                elif winner == 1: # Opponent won
+                    player_end_turn_rewards[index] += result_string_to_rewards["round_loss"]
+                    player_total_match_results[index]["losses"] += 1
+                else: # Draw
+                    player_total_match_results[index]["draws"] += 1
+
+                #print(opponent_team)
+
+    else:
+        # BATTLING EMPTY TEAMS
+        for i, player in enumerate(player_list):
+            if len(player.team.filled) > 0: # Player won
+                player_end_turn_rewards[i] += result_string_to_rewards["round_win"] * config["number_of_battles_per_player_turn"]
+            else: # Opponent won or draw
+                player_end_turn_rewards[i] += result_string_to_rewards["round_loss"] * config["number_of_battles_per_player_turn"]
+
+    # Adding teams to the PastTeamsOrganizer
+    for player in player_list:
+        pt_organizer.add_on_deck(deepcopy(player.team), turn_number = turn_number)
 
     return player_end_turn_rewards, player_total_match_results
 
-def run_simulation_multiprocess(net : SAPAI, config : dict, epsilon : float, epoch : int, pt_organizer : PastTeamsOrganizer) -> list:
+def run_simulation_multiprocess(net : SAPAI, config : dict, epsilon : float, epoch : int, pt_organizer : PastTeamsOrganizer) -> tuple[list, PastTeamsOrganizer]:
     num_threads = min(os.cpu_count(), config["max_num_threads"])
 
+    # Creating sub pt_organizers that only have 10 teams each, and are randomly sampled from the main pt_organizer
+    sub_pt_organizers = [pt_organizer.create_random_samples_clone(max_past_teams = 10) for _ in range(num_threads)]
+    
     lazy_results = []
-    for _ in range(num_threads):
-        lazy_results.append(dask.delayed(run_simulation)(deepcopy(net), deepcopy(config), epsilon, epoch, pt_organizer))
+    for i in range(num_threads):
+        lazy_results.append(dask.delayed(run_simulation)(deepcopy(net), deepcopy(config), epsilon, epoch, sub_pt_organizers[i]))
 
-    results = dask.compute(lazy_results, scheduler='processes')
+    dask_out = dask.compute(lazy_results, scheduler='processes')
+    
+    pt_organizer_out = deepcopy(pt_organizer)
+
+    # Adding up all the organizers together
+    for organizer in dask_out[0]:
+        for i in range(len(organizer[1].active_past_teams)):
+            pt_organizer_out.active_past_teams[i].extend(organizer[1].active_past_teams[i])
+        for i in range(len(organizer[1].on_deck_past_teams)):
+            pt_organizer_out.on_deck_past_teams[i].extend(organizer[1].on_deck_past_teams[i])
 
     # Concatenating list of lists into a single list
-    results = list(chain.from_iterable(results[0]))
-    random.shuffle(results)
+    results_out = []
+    for result in dask_out[0]:
+        results_out.extend(result[0])
+    random.shuffle(results_out)
         
-    return results
+    return results_out, deepcopy(pt_organizer_out)
 
-def update_prediction_weights(policy_net : SAPAI, target_net : SAPAI, experience_replay : list, config : dict):
+def update_prediction_weights(policy_net : SAPAI, target_net : SAPAI, experience_replay : list, config : dict, epoch : int):
     policy_net = policy_net.to(training_device)
     policy_net.set_device("training")
     policy_net.train()
@@ -295,10 +323,18 @@ def update_prediction_weights(policy_net : SAPAI, target_net : SAPAI, experience
         batches['action'] = np.array(batches["action"], dtype = np.int32)
         batches['reward'] = torch.tensor(batches['reward']).to(training_device).to(torch.float)
 
-        predictions, _ = policy_net(batches['state_encoding'])
+        predictions = policy_net(batches['state_encoding'])
         predictions = predictions[torch.arange(predictions.size(0)), batches['action']]
 
-        target, _ = target_net(batches['next_state_encoding'])
+        target = target_net(batches['next_state_encoding'])
+
+        # Creating legal action mask the best target next value
+        action_mask = np.array([create_available_action_mask(player) for player in batches['next_state']])
+        epoch_illegal_mask = create_epoch_illegal_mask(epoch, config)
+        action_mask = action_mask * epoch_illegal_mask
+        where_zeros = action_mask < 0.5
+        target[where_zeros] = -9999999
+
         target, _ = torch.max(target, dim = 1)
         target = batches['reward'] + config['gamma'] * target
 
@@ -322,7 +358,8 @@ def run_with_loop(net, config, epsilon, epoch : int, pt_organizer : PastTeamsOrg
     start_time = time.time()
     #for i in range(config["max_num_threads"]):
     for i in range(1):
-        experience_replay.extend(run_simulation(deepcopy(net), config, epsilon, epoch, pt_organizer))
+        experience_replay_out, pt_organizer_out = run_simulation(deepcopy(net), config, epsilon, epoch, pt_organizer)
+        experience_replay.extend(experience_replay_out)
         print(f"Run: {i}")
     elapsed_time = time.time() - start_time
     print(f"Elapsed time (loop): {elapsed_time} seconds")
@@ -330,70 +367,91 @@ def run_with_loop(net, config, epsilon, epoch : int, pt_organizer : PastTeamsOrg
     print("Number of threads: ", config["max_num_threads"])
     print("Number of players per thread: ", config["players_per_simulation"])
     print(rollout_device)
-    return experience_replay
+    return experience_replay, pt_organizer_out
 
 def run_with_processes(net, config, epsilon, epoch : int, pt_organizer : PastTeamsOrganizer):
     start_time = time.time()
-    experience_replay = run_simulation_multiprocess(deepcopy(net), config, epsilon, epoch, pt_organizer)
+    experience_replay, pt_organizer = run_simulation_multiprocess(deepcopy(net), config, epsilon, epoch, pt_organizer)
     elapsed_time = time.time() - start_time
     print(f"Elapsed time (process): {elapsed_time} seconds")
     print(f"Experience replay length: {len(experience_replay)}")
     print("Number of threads: ", config["max_num_threads"])
     print("Number of players per thread: ", config["players_per_simulation"])
     print(rollout_device)
-    return experience_replay
+    return experience_replay, pt_organizer
 
 def train():
-    shop = Shop()
-    team = Team()
-    player = Player(shop, team)
-
     config = DEFAULT_CONFIGURATION
+
+    # Get the current date and time
+    if USE_WANDB:
+        run_name = "run_" + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
+        wandb.init(project='sap-god-bot', name=run_name)
+        wandb.config.update(config)
 
     policy_net = SAPAI(config = config)
     target_net = deepcopy(policy_net)
 
-    pt_organizer = PastTeamsOrganizer(config)
-    # Pickle load pt_organizer
-    #pt_organizer = pickle.load(open("pt_organizer.pkl", "rb"))
-    #pt_organizer.update_teams()
+    greedy_pt_organizer = PastTeamsOrganizer(config, max_past_teams=75)
+    epsilon_pt_organizer = PastTeamsOrganizer(config, max_past_teams=75)
 
-    # Loading weights
-    policy_net.load_state_dict(torch.load("model_test_14.pt"))
-    #eval_results, actions_used = evaluate_model(policy_net, config, epoch = 0)
-    #visualize_rollout(policy_net, config)
+    starting_epoch = 1
 
     # Random action hyperparameters
     epsilon = config["epsilon"]
     epsilon_min = config["epsilon_min"]
     epsilon_decay = config["epsilon_decay"]
 
-    for epoch in range(1, config["epochs"] + 1):
-        #epsilon = 0.90
+    # Loading runs
+    train_mode = "continue" # "pretrained", "scratch", or "continue"
+    train_path = "june8_first_long_run.pt"
+
+    if train_mode == "continue":
+        loaded_values = torch.load(train_path)
+        policy_net.load_state_dict(loaded_values["policy_model"])
+        target_net.load_state_dict(loaded_values["target_model"])
+
+        starting_epoch = loaded_values["epoch"]
+        epsilon = loaded_values["epsilon"]
+        epsilon_pt_organizer = loaded_values["epsilon_pt_organizer"]
+        greedy_pt_organizer = loaded_values["greedy_pt_organizer"]
+
+        epsilon_pt_organizer.set_new_maxlen(75)
+        greedy_pt_organizer.set_new_maxlen(75)
+    elif train_mode == "pretrained":
+        checkpoint = torch.load(train_path)
+        policy_net.load_state_dict(checkpoint["model"])
+        target_net.load_state_dict(checkpoint["model"])
+    elif train_mode == "continue_just_model":
+        loaded_model = torch.load(train_path)
+        policy_net.load_state_dict(loaded_model)
+        target_net.load_state_dict(loaded_model)
+
+    if USE_WANDB:
+        wandb.watch(policy_net)
+
+    #eval_results, actions_used = evaluate_model(policy_net, config, epoch = 0)
+    #visualize_rollout(policy_net, config)
+
+    for epoch in range(starting_epoch, config["epochs"] + 1):
         print("Epoch: ", epoch)
         print("Epsilon: ", epsilon)
     
         # Running with multithreading
-        #experience_replay = run_with_loop(policy_net, config, epsilon, epoch, pt_organizer)
-        experience_replay = run_with_processes(policy_net, config, epsilon, epoch, pt_organizer)
-
-        # Saving experience replay
-        #pickle.dump(experience_replay, open("experience_replay_test_32_players.pkl", "wb"))
-        #pickle.dump(experience_replay[:5000], open("experience_replay_test_32_players_small.pkl", "wb"))
-
-
-        # Loading experience replay
-        #experience_replay_large = pickle.load(open("experience_replay_test.pkl", "rb"))
-        #experience_replay = pickle.load(open("experience_replay_test_32_players.pkl", "rb"))
-
-        policy_net = update_prediction_weights(policy_net, target_net, experience_replay, config)
+        experience_replay, epsilon_pt_organizer, er_elapsed_time = run_with_loop(policy_net, config, epsilon, epoch, epsilon_pt_organizer)
+        #experience_replay, epsilon_pt_organizer, er_time_taken = run_with_processes(policy_net, config, epsilon, epoch, epsilon_pt_organizer)
 
         start_time = time.time()
-        eval_results, actions_used, past_team_win_percentages = evaluate_model(policy_net, pt_organizer, config = config, epoch = epoch)
+        policy_net = update_prediction_weights(policy_net, target_net, experience_replay, config, epoch = epoch)
+        update_elapsed_time = time.time() - start_time
+        print(f"Elapsed time (loop): {evaluate_elapsed_time} seconds")
+
+        start_time = time.time()
+        eval_results, actions_used, past_team_win_percentages = evaluate_model(policy_net, greedy_pt_organizer, config = config, epoch = epoch)
         print(eval_results)
         print(actions_used)
-        elapsed_time = time.time() - start_time
-        print(f"Elapsed time (loop): {elapsed_time} seconds")
+        evaluate_elapsed_time = time.time() - start_time
+        print(f"Elapsed time (loop): {evaluate_elapsed_time} seconds")
 
         # If the model beats the past opponents more on average change up the previous models
         if past_team_win_percentages is not None:
@@ -401,7 +459,23 @@ def train():
             print("Average win percentage: ", avg_win_percentage)
             if avg_win_percentage > config["win_percentage_threshold_past_teams"]:
                 print(f"Updating past teams with win percentage: {avg_win_percentage}")
-                pt_organizer.update_teams()
+                greedy_pt_organizer.update_teams()
+                epsilon_pt_organizer.update_teams()
+
+            # Saving model
+            save_dict = {
+                "policy_model": policy_net.state_dict(),
+                "target_model": target_net.state_dict(),
+                "epoch": epoch,
+                "epsilon": epsilon,
+                "epsilon_pt_organizer": epsilon_pt_organizer,
+                "greedy_pt_organizer": greedy_pt_organizer
+            }
+            torch.save(save_dict, f"model_test_{epoch}.pt")
+            print("Model saved")
+
+            if USE_WANDB:
+                wandb.save(f"model_test_{epoch}.pt")
 
         if epoch % 5 == 0:
             target_net = deepcopy(policy_net)
@@ -409,11 +483,23 @@ def train():
         
         epsilon = max(epsilon * epsilon_decay, epsilon_min)
 
-        # Saving model
-        torch.save(policy_net.state_dict(), f"model_test_{epoch}.pt")
-        print("Model saved")
-
         print()
+
+        if USE_WANDB:
+            wandb_logging_dict = {
+                "epoch": epoch,
+                "epsilon": epsilon,
+                "avg_win_percentage": avg_win_percentage,
+                "sum_pigs_defeated": np.sum(eval_results),
+                "pigs_defeated": eval_results,
+                "actions_used": actions_used,
+                "experience_replay_length": len(experience_replay),
+                "experience_replay_time_taken": er_elapsed_time,
+                "evaluate_time_taken": evaluate_elapsed_time,
+                "update_time_taken": update_elapsed_time,
+
+            }
+            wandb.log({"avg_win_percentage": avg_win_percentage, "epsilon": epsilon, "epoch": epoch})
 
 if __name__ == "__main__":
     print(f"Cuda available: {torch.cuda.is_available()}", flush = True)
