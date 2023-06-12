@@ -468,12 +468,12 @@ def auto_assign_food_to_pet(food : str, player : Player) -> Player:
             return_idx = random.sample(has_effect_item, 1)[0]
             return return_idx
     elif food in food_types["death_causes"]:
-        faint_pets = [i for i, slot in enumerate(player.team.slots) if slot.pet.name != "pet-none" and slot.pet.ability['trigger'] == "faint"]
+        faint_pets = [i for i, slot in enumerate(player.team.slots) if slot.pet.name != "pet-none" and slot.pet.ability['trigger'] == "Faint"]
         if len(faint_pets) > 0:
             faint_pet_idx = random.sample(faint_pets, 1)[0]
             return faint_pet_idx
         else:
-            nonfaint_pets = [i for i, slot in enumerate(player.team.slots) if slot.pet.name != "pet-none" and not slot.pet.ability['trigger'] == "faint"]
+            nonfaint_pets = [i for i, slot in enumerate(player.team.slots) if slot.pet.name != "pet-none" and not slot.pet.ability['trigger'] == "Faint"]
             faint_pet_idx = random.sample(nonfaint_pets, 1)[0]
             return faint_pet_idx
     elif food in food_types["level_up"]:

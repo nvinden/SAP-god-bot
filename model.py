@@ -99,6 +99,8 @@ class SAPAI(nn.Module):
             encoding[batch_no, 0, all_items_idx["player_lives_remaining"]] = current_player.lives / 10
             encoding[batch_no, 0, all_items_idx["current_gold"]] = current_player.gold / 10
             encoding[batch_no, 0, all_items_idx["wins"]] = current_player.wins / 10
+            if current_player.lf_winner is not None:
+                encoding[batch_no, 0, all_items_idx["wins"] + 1] = 1.0 if current_player.lf_winner == True else 0.0 # just sticking it on to the end dont worry about it
 
             i = 0
             # Dimension 2: Shop pets

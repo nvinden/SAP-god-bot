@@ -8,8 +8,8 @@ training_device = "cuda"
 DEFAULT_CONFIGURATION = {
     # Model parameters
     "d_model": 512,
-    "nhead": 10, #32,
-    "num_layers": 8, #16,
+    "nhead": 6,
+    "num_layers": 4,
 
     # Rollout parameters
     "players_per_simulation": 30, #20,
@@ -23,15 +23,15 @@ DEFAULT_CONFIGURATION = {
 
     # Random action parameters
     "epsilon": 0.95,
-    "epsilon_decay": 0.985,
+    "epsilon_decay": 0.98,
     "epsilon_min": 0.075,
 
     # Training parameters
     "epochs": 300,
     "batch_size": 32,
     "num_updates_per_sample": 8.0,
-    "gamma": 0.95,
-    "learning_rate": 0.0001, # 0.001
+    "gamma": 0.975,
+    "learning_rate": 0.0001,
     "win_percentage_threshold_past_teams": 0.55,
     "freeze_transformer_epochs": 5, 
 
@@ -44,13 +44,14 @@ DEFAULT_CONFIGURATION = {
     "allow_negative_rewards": True,
     "allow_stat_increase_as_reward": False,
     "allow_combine_reward": False,
+    "allow_penalty_for_unused_gold": True
 }
 
 PRETRAIN_DEFAULT_CONFIGURATION = {
     # Model parameters
     #"d_model": 512,
-    "nhead": 10, #32,
-    "num_layers": 8, #16,
+    "nhead": 6,
+    "num_layers": 4,
 
     # Training parameters
     "epochs": 100_000,

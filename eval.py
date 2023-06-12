@@ -8,6 +8,7 @@ import random
 import torch
 
 import numpy as np
+from collections import defaultdict
 
 current_directory = os.getcwd()
 sys.path.append(current_directory + '/sapai_gym')
@@ -20,16 +21,19 @@ from sapai.player import Player, GoldException, WrongObjectException, FullTeamEx
 
 from model import SAPAI
 from model_actions import call_action_from_q_index, num_agent_actions, agent_actions_list, action_beginning_index, action_index_to_action_type, create_available_action_mask, action2index,idx2pet, idx2food
-from config import DEFAULT_CONFIGURATION, rollout_device, training_device, N_ACTIONS
+from config import DEFAULT_CONFIGURATION, rollout_device, training_device, N_ACTIONS, USE_WANDB
 from past_teams import PastTeamsOrganizer
+import wandb
 
 # This function runs "number of rollouts" number of games, each preforming the highest Q value action
 # for each player. The function returns the average number of wins for the player, when fighting against.
 # 1-1, 2-2, 3-3, 4-4, 5-5 ... pigs
-def evaluate_model(net : SAPAI, pt_organizer : PastTeamsOrganizer, epoch : int, config : dict = None, number_of_rollouts : int = 25, max_number_of_actions = 20) -> tuple[list, dict]:
+def evaluate_model(net : SAPAI, pt_organizer : PastTeamsOrganizer, epoch : int, config : dict = None, number_of_rollouts : int = 25, max_number_of_actions = 20, number_of_pigs = 10) -> tuple[list, dict]:
     net = net.to(rollout_device)
     net.set_device("rollout")
     net.eval()
+
+    team_file_string = ""
 
     if config is None:
         config = DEFAULT_CONFIGURATION
@@ -37,9 +41,13 @@ def evaluate_model(net : SAPAI, pt_organizer : PastTeamsOrganizer, epoch : int, 
     if epoch % 3 == 0:
         players = [Player() for _ in range(number_of_rollouts)]
     else:
-        players = [Player() for _ in range(5)]
+        players = [Player() for _ in range(number_of_pigs)]
     results = []
+
+    # Data from the evaluation
     actions_used = {action : 0 for action in agent_actions_list}
+    pets_bought = {pet : 0 for pet in idx2pet.values()}
+    food_bought = {food : 0 for food in idx2food.values()}
 
     past_player_win_percetages = []
 
@@ -65,6 +73,14 @@ def evaluate_model(net : SAPAI, pt_organizer : PastTeamsOrganizer, epoch : int, 
                     player.gold += 1
                     player.roll()
 
+                # if bought pet
+                if action >= action_beginning_index[action2index["buy_pet"]] and action < action_beginning_index[action2index["buy_pet"]] + num_agent_actions["buy_pet"]:
+                    pets_bought[idx2pet[action - action_beginning_index[action2index["buy_pet"]]]] += 1
+
+                # if bought food
+                if action >= action_beginning_index[action2index["buy_food"]] and action < action_beginning_index[action2index["buy_food"]] + num_agent_actions["buy_food"]:
+                    food_bought[idx2food[action - action_beginning_index[action2index["buy_food"]]]] += 1
+
             # Remove players that have pressed end turn
             not_ended_turns = actions_taken != (N_ACTIONS - 1)
             not_ended_turns = not_ended_turns.tolist()
@@ -78,23 +94,39 @@ def evaluate_model(net : SAPAI, pt_organizer : PastTeamsOrganizer, epoch : int, 
         # Battle past players
         if epoch % 3 == 0:
             past_teams_win_percentage = [pt_organizer.battle_past_teams(player.team, turn_number, number_of_rollouts) for player in players]
+            winner_list = [win_percentage > 0.5 for win_percentage in past_teams_win_percentage]
             past_teams_win_percentage = np.mean(past_teams_win_percentage)
             past_player_win_percetages.append(past_teams_win_percentage)
+        else:
+            winner_list = [True for _ in range(number_of_pigs)]
 
         # Battle the pigs
-        win_list = np.array([battle_increasing_pigs(player, max_stats=25) for player in np.array(players)[:5]])
+        win_list = np.array([battle_increasing_pigs(player, max_stats=25) for player in np.array(players)[:number_of_pigs]])
         avg_wins = np.mean(win_list)
 
+        # Add teams to the out_file
+        team_file_string += "Turn: " + str(turn_number) + "\n"
+        for player in players[:10]:
+            team_file_string += str(player.team) + "\n"
+        team_file_string += "\n"
+
         # Next Turn
-        for player in players:
+        for player, winner in zip(players, winner_list):
             pt_organizer.add_on_deck(deepcopy(player.team), turn_number)
-            player.start_turn()
+            player.start_turn(winner = winner)
 
         results.append(avg_wins)
 
+    # Save the file as "teams.txt"
+    with open("teams.txt", "w") as f:
+        f.write(team_file_string)
+    
+    if USE_WANDB:
+        wandb.save("teams.txt")
+
     if epoch % 3 == 0:
-        return results, actions_used, past_player_win_percetages
-    return results, actions_used, None
+        return results, actions_used, past_player_win_percetages, pets_bought, food_bought
+    return results, actions_used, None, pets_bought, food_bought
 
 def battle_increasing_pigs(player : Player, max_stats : 50) -> int:
     n_wins = -1
@@ -166,7 +198,7 @@ def action_idx_to_string(action_idx : int) -> str:
         else: return f"Froze {idx2food[player_index - len(idx2pet)]}"
     elif action_idx >= ranges[5] and action_idx < ranges[6]: # Unfreeze
         player_index = action_idx - ranges[5]
-        if player_index < len(idx2pet): return f"Froze {idx2pet[player_index]}"
+        if player_index < len(idx2pet): return f"Unfroze {idx2pet[player_index]}"
         else: return f"Unfroze {idx2food[player_index - len(idx2pet)]}"
     elif action_idx >= ranges[6] and action_idx < ranges[7]: # End turn
         return "Ended turn"
@@ -180,7 +212,8 @@ def visualize_rollout(net: SAPAI, config : dict):
 
     player = Player()
 
-    epoch = 1
+    epoch = 100
+
 
     while True:
         action_number, q_values = get_best_legal_move(player, net, config = config, epoch = epoch, return_q_values = True)
@@ -198,22 +231,11 @@ def visualize_rollout(net: SAPAI, config : dict):
 
         if action_number == (N_ACTIONS - 1):
             player.end_turn()
-            player.start_turn()
+            player.start_turn(winner = True)
             epoch += 1
 
 def test_legal_move_masking():
     player = Player()
-    player.start_turn()
-    player.start_turn()
-    player.start_turn()
-    player.start_turn()
-    player.start_turn()
-    player.start_turn()
-    player.start_turn()
-    player.start_turn()
-    player.start_turn()
-    player.start_turn()
-    player.start_turn()
 
     player.gold += 17
     player.buy_pet(0)

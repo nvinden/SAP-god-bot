@@ -104,14 +104,12 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float, epoch : int, pt_
 
             # 2) Performing actions and getting mid-turn rewards:
             for player_number, player, action in zip(active_players, active_player_list, move_actions):
-                #current_state = deepcopy(player)
                 before_action_total_stats = sum([slot.health + slot.attack for slot in player.team.slots if not slot.empty])
                 result_string = call_action_from_q_index(player, int(action))
 
                 reward = result_string_to_rewards[result_string]
 
                 next_state_encoding = net.state_to_encoding(player)
-                #next_state = deepcopy(player)
 
                 if config["allow_stat_increase_as_reward"] and reward is not None:
                     after_action_total_stats = sum([slot.health + slot.attack for slot in player.team.slots if not slot.empty])
@@ -123,7 +121,6 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float, epoch : int, pt_
                         reward += increase_stats_reward
 
                 player_turn_action_replays[player_number].append({
-                    #"state": current_state,
                     "state_encoding": current_state_encodings[player_number_to_i[player_number]].cpu().numpy(),
                     "action": action.item(),
                     "reward": reward,
@@ -193,12 +190,8 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float, epoch : int, pt_
                 if action_replay["reward"] is None:
                     action_replay["reward"] = player_end_turn_rewards[player_number]
 
-                # If epoch is smaller than a certain amount, reward buying pets and selling pets
-                #if epoch < 10:
-                    #if action_replay["action"] >= action_beginning_index[action2index["buy_pet"]] and action_replay["action"] < action_beginning_index[action2index["buy_pet"]] + num_agent_actions["buy_pet"]:
-                        #action_replay["reward"] += 0.03
-                #    elif action_replay["action"] >= action_beginning_index[action2index["sell"]] and action_replay["action"] < action_beginning_index[action2index["sell"]] + num_agent_actions["sell"]:
-                #        action_replay["reward"] += 0.1
+                    if config["allow_penalty_for_unused_gold"]:
+                        action_replay["reward"] -= 0.1 * action_replay["next_state"].gold
 
                 if config['allow_combine_reward'] and action_replay["action"] >= action_beginning_index[action2index["combine"]] and action_replay["action"] < action_beginning_index[action2index["combine"]] + num_agent_actions["combine"]:
                     action_replay["reward"] += 1.0
@@ -209,8 +202,9 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float, epoch : int, pt_
             local_experience_replay.extend(deepcopy(player_turn_action_replays[player_number]))
 
         # Starting the next turn for each player
-        for player in player_list:
-            player.start_turn()
+        for player_number, player in enumerate(player_list):
+            won_last_round = player_total_match_results[player_number]["wins"] > player_total_match_results[player_number]["losses"]
+            player.start_turn(winner = won_last_round)
 
     return local_experience_replay, deepcopy(pt_organizer)
 
@@ -350,7 +344,7 @@ def update_prediction_weights(policy_net : SAPAI, target_net : SAPAI, experience
             average_loss_past = np.mean(losses[-300:])
             print(f"Step {update_number:04d}: Loss {average_loss_past}")
 
-    return policy_net
+    return policy_net, np.mean(losses)
 
 # Running with a loop
 def run_with_loop(net, config, epsilon, epoch : int, pt_organizer : PastTeamsOrganizer):
@@ -367,7 +361,7 @@ def run_with_loop(net, config, epsilon, epoch : int, pt_organizer : PastTeamsOrg
     print("Number of threads: ", config["max_num_threads"])
     print("Number of players per thread: ", config["players_per_simulation"])
     print(rollout_device)
-    return experience_replay, pt_organizer_out
+    return experience_replay, pt_organizer_out, elapsed_time
 
 def run_with_processes(net, config, epsilon, epoch : int, pt_organizer : PastTeamsOrganizer):
     start_time = time.time()
@@ -378,16 +372,18 @@ def run_with_processes(net, config, epsilon, epoch : int, pt_organizer : PastTea
     print("Number of threads: ", config["max_num_threads"])
     print("Number of players per thread: ", config["players_per_simulation"])
     print(rollout_device)
-    return experience_replay, pt_organizer
+    return experience_replay, pt_organizer, elapsed_time
 
 def train():
     config = DEFAULT_CONFIGURATION
 
     # Get the current date and time
     if USE_WANDB:
+        wandb_id = wandb.util.generate_id()
         run_name = "run_" + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
-        wandb.init(project='sap-god-bot', name=run_name)
-        wandb.config.update(config)
+        wandb.init(resume = "must", id = "y9ekd6cz")
+        wandb.config.update(config, allow_val_change = True)
+        print("WandB ID: ", wandb_id)
 
     policy_net = SAPAI(config = config)
     target_net = deepcopy(policy_net)
@@ -403,8 +399,8 @@ def train():
     epsilon_decay = config["epsilon_decay"]
 
     # Loading runs
-    train_mode = "continue" # "pretrained", "scratch", or "continue"
-    train_path = "june8_first_long_run.pt"
+    train_mode = "continue" # "pretrained", "scratch", "continue", "none"
+    train_path = "model_test_102.pt"
 
     if train_mode == "continue":
         loaded_values = torch.load(train_path)
@@ -430,6 +426,7 @@ def train():
     if USE_WANDB:
         wandb.watch(policy_net)
 
+    #eval_results, actions_used, past_team_win_percentages, pets_bought, food_bought = evaluate_model(policy_net, greedy_pt_organizer, config = config, epoch = 2)
     #eval_results, actions_used = evaluate_model(policy_net, config, epoch = 0)
     #visualize_rollout(policy_net, config)
 
@@ -438,20 +435,21 @@ def train():
         print("Epsilon: ", epsilon)
     
         # Running with multithreading
-        experience_replay, epsilon_pt_organizer, er_elapsed_time = run_with_loop(policy_net, config, epsilon, epoch, epsilon_pt_organizer)
-        #experience_replay, epsilon_pt_organizer, er_time_taken = run_with_processes(policy_net, config, epsilon, epoch, epsilon_pt_organizer)
+        #experience_replay, epsilon_pt_organizer, er_elapsed_time = run_with_loop(policy_net, config, epsilon, epoch, epsilon_pt_organizer)
+        experience_replay, epsilon_pt_organizer, er_elapsed_time = run_with_processes(policy_net, config, epsilon, epoch, epsilon_pt_organizer)
 
         start_time = time.time()
-        policy_net = update_prediction_weights(policy_net, target_net, experience_replay, config, epoch = epoch)
+        policy_net, avg_loss = update_prediction_weights(policy_net, target_net, experience_replay, config, epoch = epoch)
         update_elapsed_time = time.time() - start_time
-        print(f"Elapsed time (loop): {evaluate_elapsed_time} seconds")
+        print(f"Average loss: {avg_loss}")
+        print(f"Elapsed time: {update_elapsed_time} seconds")
 
         start_time = time.time()
-        eval_results, actions_used, past_team_win_percentages = evaluate_model(policy_net, greedy_pt_organizer, config = config, epoch = epoch)
+        eval_results, actions_used, past_team_win_percentages, pets_bought, food_bought = evaluate_model(policy_net, greedy_pt_organizer, config = config, epoch = epoch)
         print(eval_results)
         print(actions_used)
         evaluate_elapsed_time = time.time() - start_time
-        print(f"Elapsed time (loop): {evaluate_elapsed_time} seconds")
+        print(f"Elapsed time: {evaluate_elapsed_time} seconds")
 
         # If the model beats the past opponents more on average change up the previous models
         if past_team_win_percentages is not None:
@@ -486,26 +484,40 @@ def train():
         print()
 
         if USE_WANDB:
+            win_percentage = np.mean(past_team_win_percentages) if past_team_win_percentages is not None else None
+            if win_percentage is not None:
+                beat_past_opponent = win_percentage > config["win_percentage_threshold_past_teams"]
+            else:
+                beat_past_opponent = None
+                
             wandb_logging_dict = {
                 "epoch": epoch,
                 "epsilon": epsilon,
-                "avg_win_percentage": avg_win_percentage,
+                "avg_loss": avg_loss,
+                "avg_win_percentage": win_percentage,
+                "beat_past_opponent": beat_past_opponent,
+                "avg_win_percentage_per_round": past_team_win_percentages,
                 "sum_pigs_defeated": np.sum(eval_results),
-                "pigs_defeated": eval_results,
+                "max_pigs_defeated": np.max(eval_results),
                 "actions_used": actions_used,
                 "experience_replay_length": len(experience_replay),
                 "experience_replay_time_taken": er_elapsed_time,
                 "evaluate_time_taken": evaluate_elapsed_time,
                 "update_time_taken": update_elapsed_time,
-
             }
-            wandb.log({"avg_win_percentage": avg_win_percentage, "epsilon": epsilon, "epoch": epoch})
+
+            pig_defeated_dict = {"pigs_defeated_round_" + str(i + 1): eval_results[i] for i in range(len(eval_results))}
+            wandb_logging_dict["pigs_defeated_by_round"] = pig_defeated_dict
+
+            # Adding pets and food bought dictionaries
+            wandb_logging_dict["pets_bought"] = pets_bought
+            wandb_logging_dict["food_bought"] = food_bought
+
+            wandb.log(wandb_logging_dict)
 
 if __name__ == "__main__":
     print(f"Cuda available: {torch.cuda.is_available()}", flush = True)
     print(f"Rollout device used: {rollout_device}", flush = True)
     print(f"Training device used: {training_device}\n", flush = True)
-
-    #test_legal_move_masking()
 
     train()

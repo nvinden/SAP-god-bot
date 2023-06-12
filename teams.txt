@@ -1,0 +1,930 @@
+Turn: 0
+0: < Slot pet-fish 2-3 none 1-0 > 
+    1: < Slot pet-mosquito 2-2 none 1-0 > 
+    2: < Slot pet-fish 2-3 none 1-0 > 
+    3: < Slot EMPTY > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-ant 2-2 none 1-0 > 
+    1: < Slot EMPTY > 
+    2: < Slot EMPTY > 
+    3: < Slot EMPTY > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-duck 2-3 none 1-0 > 
+    1: < Slot EMPTY > 
+    2: < Slot EMPTY > 
+    3: < Slot EMPTY > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-fish 2-3 none 1-0 > 
+    1: < Slot EMPTY > 
+    2: < Slot EMPTY > 
+    3: < Slot EMPTY > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-ant 2-2 none 1-0 > 
+    1: < Slot pet-ant 2-2 none 1-0 > 
+    2: < Slot pet-fish 2-3 none 1-0 > 
+    3: < Slot EMPTY > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-ant 2-2 none 1-0 > 
+    1: < Slot pet-mosquito 2-2 none 1-0 > 
+    2: < Slot pet-duck 2-3 none 1-0 > 
+    3: < Slot EMPTY > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-beaver 3-3 none 1-0 > 
+    1: < Slot pet-otter 1-3 none 1-0 > 
+    2: < Slot pet-duck 2-3 none 1-0 > 
+    3: < Slot EMPTY > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-fish 2-3 none 1-0 > 
+    1: < Slot EMPTY > 
+    2: < Slot EMPTY > 
+    3: < Slot EMPTY > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-ant 2-2 none 1-0 > 
+    1: < Slot pet-duck 2-3 none 1-0 > 
+    2: < Slot pet-mosquito 2-2 none 1-0 > 
+    3: < Slot EMPTY > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-fish 2-3 none 1-0 > 
+    1: < Slot EMPTY > 
+    2: < Slot EMPTY > 
+    3: < Slot EMPTY > 
+    4: < Slot EMPTY > 
+    
+
+Turn: 1
+0: < Slot pet-fish 2-3 none 1-0 > 
+    1: < Slot pet-mosquito 2-2 none 1-0 > 
+    2: < Slot pet-fish 2-3 none 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-beaver 3-2 none 1-0 > 
+    
+0: < Slot pet-ant 2-2 none 1-0 > 
+    1: < Slot pet-beaver 3-2 none 1-0 > 
+    2: < Slot pet-duck 2-3 none 1-0 > 
+    3: < Slot EMPTY > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-duck 2-3 none 1-0 > 
+    1: < Slot pet-ant 2-2 none 1-0 > 
+    2: < Slot pet-fish 2-3 none 1-0 > 
+    3: < Slot EMPTY > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-fish 2-3 none 1-0 > 
+    1: < Slot pet-beaver 3-2 none 1-0 > 
+    2: < Slot pet-ant 2-2 none 1-0 > 
+    3: < Slot EMPTY > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-ant 2-2 none 1-0 > 
+    1: < Slot pet-ant 2-2 none 1-0 > 
+    2: < Slot pet-fish 2-3 none 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-ant 2-2 none 1-0 > 
+    
+0: < Slot pet-ant 2-2 none 1-0 > 
+    1: < Slot pet-mosquito 2-2 none 1-0 > 
+    2: < Slot pet-duck 2-3 none 1-0 > 
+    3: < Slot pet-beaver 3-2 none 1-0 > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-beaver 3-3 none 1-0 > 
+    1: < Slot pet-otter 1-3 none 1-0 > 
+    2: < Slot pet-duck 2-3 none 1-0 > 
+    3: < Slot pet-fish 2-3 none 1-0 > 
+    4: < Slot pet-ant 2-2 none 1-0 > 
+    
+0: < Slot pet-fish 2-4 none 1-0 > 
+    1: < Slot pet-otter 1-3 none 1-0 > 
+    2: < Slot pet-ant 2-2 none 1-0 > 
+    3: < Slot EMPTY > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-ant 2-2 none 1-0 > 
+    1: < Slot pet-duck 2-3 none 1-0 > 
+    2: < Slot pet-mosquito 2-2 none 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-ant 2-2 none 1-0 > 
+    
+0: < Slot pet-fish 2-3 none 1-0 > 
+    1: < Slot pet-pig 4-1 none 1-0 > 
+    2: < Slot pet-pig 4-1 none 1-0 > 
+    3: < Slot EMPTY > 
+    4: < Slot EMPTY > 
+    
+
+Turn: 2
+0: < Slot pet-fish 2-3 none 1-0 > 
+    1: < Slot pet-mosquito 2-2 none 1-0 > 
+    2: < Slot pet-fish 5-6 status-honey-bee 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-beaver 3-2 none 1-0 > 
+    
+0: < Slot pet-ant 2-2 none 1-0 > 
+    1: < Slot pet-beaver 3-2 none 1-0 > 
+    2: < Slot pet-duck 2-3 none 1-0 > 
+    3: < Slot EMPTY > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-duck 2-3 none 1-0 > 
+    1: < Slot pet-ant 2-2 none 1-0 > 
+    2: < Slot pet-fish 2-3 none 1-0 > 
+    3: < Slot EMPTY > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-fish 2-3 none 1-0 > 
+    1: < Slot pet-beaver 3-2 none 1-0 > 
+    2: < Slot pet-ant 2-2 none 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-ant 2-2 none 1-0 > 
+    1: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    2: < Slot pet-fish 6-3 status-bone-attack 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-ant 2-2 none 1-0 > 
+    
+0: < Slot pet-ant 2-2 none 1-0 > 
+    1: < Slot pet-mosquito 2-2 none 1-0 > 
+    2: < Slot pet-duck 2-3 none 1-0 > 
+    3: < Slot pet-beaver 3-2 none 1-0 > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-beaver 3-3 none 1-0 > 
+    1: < Slot pet-otter 4-6 none 1-0 > 
+    2: < Slot pet-duck 2-3 none 1-0 > 
+    3: < Slot pet-fish 2-3 none 1-0 > 
+    4: < Slot pet-ant 3-3 none 1-0 > 
+    
+0: < Slot pet-fish 2-4 none 1-0 > 
+    1: < Slot pet-otter 1-3 none 1-0 > 
+    2: < Slot pet-ant 2-2 none 1-0 > 
+    3: < Slot EMPTY > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    1: < Slot pet-duck 2-3 none 1-0 > 
+    2: < Slot pet-mosquito 2-2 none 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    
+0: < Slot pet-fish 2-3 none 1-0 > 
+    1: < Slot pet-pig 4-1 none 1-0 > 
+    2: < Slot pet-pig 4-1 none 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot EMPTY > 
+    
+
+Turn: 3
+0: < Slot pet-fish 3-4 none 1-0 > 
+    1: < Slot pet-mosquito 2-2 none 1-0 > 
+    2: < Slot pet-fish 2-3 status-honey-bee 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-beaver 3-2 none 1-0 > 
+    
+0: < Slot pet-ant 2-2 none 1-0 > 
+    1: < Slot pet-beaver 3-2 none 1-0 > 
+    2: < Slot pet-duck 2-3 none 1-0 > 
+    3: < Slot pet-beaver 3-2 none 1-0 > 
+    4: < Slot pet-mosquito 2-2 none 1-0 > 
+    
+0: < Slot pet-duck 2-3 none 1-0 > 
+    1: < Slot pet-ant 2-2 none 1-0 > 
+    2: < Slot pet-fish 2-3 none 1-0 > 
+    3: < Slot pet-fish 2-3 none 1-0 > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-fish 2-3 none 1-0 > 
+    1: < Slot pet-beaver 6-5 none 1-0 > 
+    2: < Slot pet-ant 2-2 none 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-ant 2-2 none 1-0 > 
+    
+0: < Slot pet-ant 2-2 none 1-0 > 
+    1: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    2: < Slot pet-fish 6-3 status-bone-attack 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-ant 2-2 none 1-0 > 
+    
+0: < Slot pet-ant 2-2 none 1-0 > 
+    1: < Slot pet-mosquito 2-2 none 1-0 > 
+    2: < Slot pet-duck 2-3 none 1-0 > 
+    3: < Slot pet-beaver 3-2 none 1-0 > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-beaver 4-4 none 1-1 > 
+    1: < Slot pet-otter 1-3 none 1-0 > 
+    2: < Slot pet-duck 2-3 none 1-0 > 
+    3: < Slot pet-fish 6-3 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 4-4 none 1-0 > 
+    
+0: < Slot pet-fish 2-4 none 1-0 > 
+    1: < Slot pet-otter 1-3 none 1-0 > 
+    2: < Slot pet-ant 2-2 none 1-0 > 
+    3: < Slot EMPTY > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    1: < Slot pet-duck 2-3 none 1-0 > 
+    2: < Slot pet-mosquito 2-2 none 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-ant 7-3 status-bone-attack 1-0 > 
+    
+0: < Slot pet-fish 2-3 none 1-0 > 
+    1: < Slot pet-mosquito 2-2 none 1-0 > 
+    2: < Slot EMPTY > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot EMPTY > 
+    
+
+Turn: 4
+0: < Slot pet-fish 4-4 none 1-0 > 
+    1: < Slot pet-mosquito 3-3 none 1-0 > 
+    2: < Slot pet-fish 2-3 status-honey-bee 1-0 > 
+    3: < Slot pet-ant 3-2 none 1-0 > 
+    4: < Slot pet-spider 2-2 none 1-0 > 
+    
+0: < Slot pet-ant 2-2 none 1-0 > 
+    1: < Slot pet-beaver 3-2 none 1-0 > 
+    2: < Slot pet-duck 2-3 none 1-0 > 
+    3: < Slot pet-beaver 3-2 none 1-0 > 
+    4: < Slot pet-mosquito 2-2 none 1-0 > 
+    
+0: < Slot pet-duck 2-3 none 1-0 > 
+    1: < Slot pet-ant 2-2 none 1-0 > 
+    2: < Slot pet-fish 2-3 none 1-0 > 
+    3: < Slot pet-fish 2-3 none 1-0 > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-fish 2-3 none 1-0 > 
+    1: < Slot pet-beaver 3-2 none 1-0 > 
+    2: < Slot pet-ant 2-2 none 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-ant 2-2 none 1-0 > 
+    
+0: < Slot pet-ant 3-3 none 1-0 > 
+    1: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    2: < Slot pet-fish 6-3 status-bone-attack 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-ant 2-2 status-garlic-armor 1-0 > 
+    
+0: < Slot pet-ant 2-2 none 1-0 > 
+    1: < Slot pet-mosquito 2-2 none 1-0 > 
+    2: < Slot pet-duck 2-3 none 1-0 > 
+    3: < Slot pet-beaver 3-2 none 1-0 > 
+    4: < Slot pet-beaver 3-2 none 1-0 > 
+    
+0: < Slot pet-beaver 4-4 none 1-1 > 
+    1: < Slot pet-otter 5-7 none 1-0 > 
+    2: < Slot pet-duck 2-3 none 1-0 > 
+    3: < Slot pet-fish 6-3 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 4-4 none 1-0 > 
+    
+0: < Slot pet-fish 2-4 none 1-0 > 
+    1: < Slot pet-otter 1-3 none 1-0 > 
+    2: < Slot pet-ant 2-2 none 1-0 > 
+    3: < Slot pet-flamingo 3-2 none 1-0 > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    1: < Slot pet-duck 2-3 none 1-0 > 
+    2: < Slot pet-mosquito 2-2 none 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-ant 8-4 status-bone-attack 1-0 > 
+    
+0: < Slot pet-fish 2-3 none 1-0 > 
+    1: < Slot pet-mosquito 2-2 none 1-0 > 
+    2: < Slot pet-beaver 3-2 none 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot EMPTY > 
+    
+
+Turn: 5
+0: < Slot pet-fish 4-4 none 1-0 > 
+    1: < Slot pet-mosquito 3-3 none 1-0 > 
+    2: < Slot pet-fish 6-7 status-honey-bee 1-0 > 
+    3: < Slot pet-ant 3-2 none 1-0 > 
+    4: < Slot pet-spider 2-2 none 1-0 > 
+    
+0: < Slot pet-ant 3-3 none 1-0 > 
+    1: < Slot pet-beaver 3-2 none 1-0 > 
+    2: < Slot pet-duck 2-3 none 1-0 > 
+    3: < Slot pet-beaver 3-2 none 1-0 > 
+    4: < Slot pet-mosquito 2-2 none 1-0 > 
+    
+0: < Slot pet-duck 2-3 none 1-0 > 
+    1: < Slot pet-ant 2-2 none 1-0 > 
+    2: < Slot pet-fish 2-3 none 1-0 > 
+    3: < Slot pet-fish 2-3 none 1-0 > 
+    4: < Slot pet-spider 2-2 none 1-0 > 
+    
+0: < Slot pet-fish 2-3 none 1-0 > 
+    1: < Slot pet-beaver 4-3 none 1-0 > 
+    2: < Slot pet-ant 2-2 none 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-ant 2-2 none 1-0 > 
+    
+0: < Slot pet-ant 3-3 none 1-0 > 
+    1: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    2: < Slot pet-fish 6-3 status-bone-attack 1-0 > 
+    3: < Slot pet-ant 3-3 none 1-0 > 
+    4: < Slot pet-ant 2-2 status-garlic-armor 1-0 > 
+    
+0: < Slot pet-ant 2-2 none 1-0 > 
+    1: < Slot pet-mosquito 3-3 none 1-0 > 
+    2: < Slot pet-duck 2-3 none 1-0 > 
+    3: < Slot EMPTY > 
+    4: < Slot pet-beaver 3-2 none 1-0 > 
+    
+0: < Slot pet-beaver 4-4 none 1-1 > 
+    1: < Slot pet-otter 2-4 none 1-0 > 
+    2: < Slot pet-duck 6-3 status-bone-attack 1-0 > 
+    3: < Slot pet-fish 6-3 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 4-4 none 1-0 > 
+    
+0: < Slot pet-fish 2-4 none 1-0 > 
+    1: < Slot pet-otter 1-3 none 1-0 > 
+    2: < Slot pet-ant 2-2 none 1-0 > 
+    3: < Slot pet-flamingo 3-2 none 1-0 > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    1: < Slot pet-duck 2-3 none 1-0 > 
+    2: < Slot pet-mosquito 2-2 none 1-0 > 
+    3: < Slot pet-ant 3-3 none 1-0 > 
+    4: < Slot pet-ant 8-4 status-bone-attack 1-0 > 
+    
+0: < Slot pet-fish 2-3 none 1-0 > 
+    1: < Slot pet-mosquito 6-2 status-bone-attack 1-0 > 
+    2: < Slot pet-beaver 3-2 none 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-ant 2-2 none 1-0 > 
+    
+
+Turn: 6
+0: < Slot pet-fish 4-4 none 1-0 > 
+    1: < Slot pet-mosquito 3-3 none 1-0 > 
+    2: < Slot pet-fish 3-4 status-honey-bee 1-0 > 
+    3: < Slot pet-ant 3-2 none 1-0 > 
+    4: < Slot pet-deer 5-1 status-bone-attack 1-0 > 
+    
+0: < Slot pet-ant 3-3 none 1-0 > 
+    1: < Slot pet-fish 2-3 none 1-0 > 
+    2: < Slot pet-duck 3-3 none 1-0 > 
+    3: < Slot pet-beaver 4-2 none 1-0 > 
+    4: < Slot pet-mosquito 2-2 none 1-0 > 
+    
+0: < Slot pet-duck 2-3 none 1-0 > 
+    1: < Slot pet-ant 2-2 none 1-0 > 
+    2: < Slot pet-fish 2-3 none 1-0 > 
+    3: < Slot pet-fish 2-3 none 1-0 > 
+    4: < Slot pet-beaver 3-2 none 1-0 > 
+    
+0: < Slot pet-fish 4-5 none 1-0 > 
+    1: < Slot pet-flamingo 3-2 none 1-0 > 
+    2: < Slot pet-ant 3-2 none 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-ant 5-4 none 1-0 > 
+    
+0: < Slot pet-ant 3-3 none 1-0 > 
+    1: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    2: < Slot pet-fish 6-3 status-bone-attack 1-0 > 
+    3: < Slot pet-ant 3-3 none 1-0 > 
+    4: < Slot pet-ant 2-2 status-garlic-armor 1-0 > 
+    
+0: < Slot pet-ant 2-2 none 1-0 > 
+    1: < Slot pet-mosquito 3-3 none 1-0 > 
+    2: < Slot pet-duck 3-4 none 1-0 > 
+    3: < Slot EMPTY > 
+    4: < Slot pet-beaver 3-2 none 1-0 > 
+    
+0: < Slot pet-beaver 4-4 none 1-1 > 
+    1: < Slot pet-otter 2-4 none 1-0 > 
+    2: < Slot pet-duck 6-3 status-bone-attack 1-0 > 
+    3: < Slot pet-fish 6-3 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 4-4 none 1-0 > 
+    
+0: < Slot pet-fish 2-4 none 1-0 > 
+    1: < Slot pet-kangaroo 2-3 none 1-0 > 
+    2: < Slot pet-ant 2-2 none 1-0 > 
+    3: < Slot pet-flamingo 3-2 none 1-0 > 
+    4: < Slot pet-badger 6-3 none 1-0 > 
+    
+0: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    1: < Slot pet-duck 2-3 none 1-0 > 
+    2: < Slot pet-mosquito 2-2 none 1-0 > 
+    3: < Slot pet-ant 5-5 none 1-0 > 
+    4: < Slot pet-ant 8-4 status-bone-attack 1-0 > 
+    
+0: < Slot pet-fish 2-3 none 1-0 > 
+    1: < Slot pet-mosquito 6-2 status-bone-attack 1-0 > 
+    2: < Slot pet-beaver 3-2 none 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-ant 3-3 none 1-0 > 
+    
+
+Turn: 7
+0: < Slot pet-fish 5-5 status-honey-bee 1-1 > 
+    1: < Slot pet-mosquito 4-4 none 1-0 > 
+    2: < Slot EMPTY > 
+    3: < Slot pet-ant 3-2 none 1-0 > 
+    4: < Slot pet-deer 5-1 status-bone-attack 1-0 > 
+    
+0: < Slot pet-ant 3-3 none 1-0 > 
+    1: < Slot pet-fish 2-3 none 1-0 > 
+    2: < Slot pet-duck 3-3 none 1-0 > 
+    3: < Slot EMPTY > 
+    4: < Slot pet-mosquito 2-2 none 1-0 > 
+    
+0: < Slot pet-duck 2-3 none 1-0 > 
+    1: < Slot pet-ant 2-2 none 1-0 > 
+    2: < Slot pet-fish 5-6 none 1-0 > 
+    3: < Slot pet-fish 6-3 status-bone-attack 1-0 > 
+    4: < Slot pet-fish 2-3 none 1-0 > 
+    
+0: < Slot pet-fish 4-5 none 1-0 > 
+    1: < Slot pet-flamingo 3-2 none 1-0 > 
+    2: < Slot pet-ant 3-2 none 1-0 > 
+    3: < Slot pet-ant 5-5 none 1-0 > 
+    4: < Slot pet-ant 5-4 none 1-0 > 
+    
+0: < Slot pet-ant 3-3 none 1-0 > 
+    1: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    2: < Slot pet-fish 6-3 status-bone-attack 1-0 > 
+    3: < Slot pet-ant 3-3 none 1-0 > 
+    4: < Slot pet-ant 2-2 status-garlic-armor 1-0 > 
+    
+0: < Slot pet-ant 2-2 none 1-0 > 
+    1: < Slot pet-mosquito 3-3 none 1-0 > 
+    2: < Slot pet-duck 4-5 none 1-0 > 
+    3: < Slot EMPTY > 
+    4: < Slot pet-beaver 3-2 none 1-0 > 
+    
+0: < Slot pet-beaver 4-4 none 1-1 > 
+    1: < Slot EMPTY > 
+    2: < Slot pet-duck 6-3 status-bone-attack 1-0 > 
+    3: < Slot pet-fish 7-4 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 4-4 none 1-0 > 
+    
+0: < Slot pet-fish 2-4 none 1-0 > 
+    1: < Slot pet-kangaroo 2-3 none 1-0 > 
+    2: < Slot pet-ant 4-4 none 1-0 > 
+    3: < Slot pet-flamingo 3-2 none 1-0 > 
+    4: < Slot pet-spider 2-2 none 1-0 > 
+    
+0: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    1: < Slot pet-fish 2-4 none 1-0 > 
+    2: < Slot pet-mosquito 4-4 none 1-0 > 
+    3: < Slot pet-ant 5-5 none 1-0 > 
+    4: < Slot pet-ant 8-4 status-bone-attack 1-0 > 
+    
+0: < Slot pet-fish 2-3 none 1-0 > 
+    1: < Slot pet-mosquito 6-2 status-bone-attack 1-0 > 
+    2: < Slot pet-beaver 3-2 none 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-ant 5-5 none 1-0 > 
+    
+
+Turn: 8
+0: < Slot pet-fish 5-5 status-honey-bee 1-1 > 
+    1: < Slot pet-mosquito 4-4 none 1-0 > 
+    2: < Slot pet-duck 3-4 none 1-0 > 
+    3: < Slot pet-ant 3-2 none 1-0 > 
+    4: < Slot pet-deer 5-1 status-bone-attack 1-0 > 
+    
+0: < Slot pet-ant 3-3 none 1-0 > 
+    1: < Slot pet-fish 2-3 none 1-0 > 
+    2: < Slot pet-duck 3-3 none 1-0 > 
+    3: < Slot pet-crocodile 8-4 none 1-0 > 
+    4: < Slot pet-mosquito 2-2 none 1-0 > 
+    
+0: < Slot pet-duck 2-3 none 1-0 > 
+    1: < Slot pet-ant 3-3 none 1-0 > 
+    2: < Slot pet-fish 8-5 status-bone-attack 2-0 > 
+    3: < Slot pet-deer 4-4 none 1-0 > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-fish 8-5 status-bone-attack 1-0 > 
+    1: < Slot pet-flamingo 3-2 none 1-0 > 
+    2: < Slot pet-ant 3-2 none 1-0 > 
+    3: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 5-4 none 1-0 > 
+    
+0: < Slot pet-ant 3-3 none 1-0 > 
+    1: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    2: < Slot pet-fish 8-5 status-bone-attack 1-0 > 
+    3: < Slot pet-ant 3-3 none 1-0 > 
+    4: < Slot pet-ant 2-2 status-garlic-armor 1-0 > 
+    
+0: < Slot pet-ant 2-2 none 1-0 > 
+    1: < Slot pet-mosquito 3-3 none 1-0 > 
+    2: < Slot pet-duck 5-6 none 1-0 > 
+    3: < Slot pet-deer 1-1 none 1-0 > 
+    4: < Slot pet-ant 2-2 none 1-0 > 
+    
+0: < Slot pet-beaver 4-4 none 1-1 > 
+    1: < Slot pet-beaver 4-3 none 1-0 > 
+    2: < Slot pet-duck 6-3 status-bone-attack 1-0 > 
+    3: < Slot pet-fish 7-4 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 4-4 none 1-0 > 
+    
+0: < Slot pet-fish 2-4 none 1-0 > 
+    1: < Slot pet-flamingo 3-2 none 1-0 > 
+    2: < Slot pet-ant 4-4 none 1-0 > 
+    3: < Slot pet-flamingo 3-2 none 1-0 > 
+    4: < Slot EMPTY > 
+    
+0: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    1: < Slot pet-shark 4-4 none 1-0 > 
+    2: < Slot pet-mosquito 4-4 none 1-0 > 
+    3: < Slot pet-ant 9-5 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 8-4 status-bone-attack 1-0 > 
+    
+0: < Slot pet-fish 2-3 none 1-0 > 
+    1: < Slot pet-mosquito 7-3 status-bone-attack 1-0 > 
+    2: < Slot pet-beaver 3-2 none 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-ant 5-5 none 1-0 > 
+    
+
+Turn: 9
+0: < Slot pet-shark 6-6 none 1-0 > 
+    1: < Slot pet-mosquito 4-4 none 1-0 > 
+    2: < Slot pet-duck 3-4 none 1-0 > 
+    3: < Slot pet-ant 3-2 none 1-0 > 
+    4: < Slot pet-deer 5-1 status-bone-attack 1-0 > 
+    
+0: < Slot pet-ant 9-6 status-bone-attack 1-0 > 
+    1: < Slot pet-monkey 1-2 none 1-0 > 
+    2: < Slot pet-duck 3-3 none 1-0 > 
+    3: < Slot pet-crocodile 8-4 none 1-0 > 
+    4: < Slot pet-mosquito 2-2 none 1-0 > 
+    
+0: < Slot pet-duck 2-3 none 1-0 > 
+    1: < Slot pet-ant 3-3 none 1-0 > 
+    2: < Slot pet-fish 8-5 status-bone-attack 2-0 > 
+    3: < Slot pet-deer 1-1 none 1-0 > 
+    4: < Slot pet-deer 5-1 status-bone-attack 1-0 > 
+    
+0: < Slot pet-fish 8-5 status-bone-attack 1-0 > 
+    1: < Slot pet-flamingo 5-4 none 1-0 > 
+    2: < Slot pet-ant 3-2 none 1-0 > 
+    3: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 9-4 status-bone-attack 1-0 > 
+    
+0: < Slot pet-ant 7-3 status-bone-attack 1-0 > 
+    1: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    2: < Slot pet-fish 8-5 status-bone-attack 1-0 > 
+    3: < Slot pet-ant 3-3 none 1-0 > 
+    4: < Slot pet-ant 4-4 status-garlic-armor 1-0 > 
+    
+0: < Slot pet-ant 2-2 none 1-0 > 
+    1: < Slot pet-deer 1-1 none 1-0 > 
+    2: < Slot pet-duck 5-6 none 1-0 > 
+    3: < Slot pet-deer 1-1 none 1-0 > 
+    4: < Slot pet-ant 2-2 none 1-0 > 
+    
+0: < Slot pet-crocodile 8-4 none 1-0 > 
+    1: < Slot pet-beaver 8-3 status-bone-attack 1-0 > 
+    2: < Slot pet-duck 6-3 status-bone-attack 1-0 > 
+    3: < Slot pet-fish 8-4 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 5-4 none 1-0 > 
+    
+0: < Slot pet-fish 5-8 none 1-0 > 
+    1: < Slot pet-flamingo 3-2 none 1-0 > 
+    2: < Slot pet-ant 4-4 none 1-0 > 
+    3: < Slot pet-flamingo 3-2 none 1-0 > 
+    4: < Slot pet-monkey 1-2 none 1-0 > 
+    
+0: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    1: < Slot pet-shark 5-5 none 1-1 > 
+    2: < Slot pet-mosquito 4-4 none 1-0 > 
+    3: < Slot pet-ant 9-5 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 8-4 status-bone-attack 1-0 > 
+    
+0: < Slot pet-fish 7-3 status-bone-attack 1-0 > 
+    1: < Slot pet-mosquito 8-3 status-bone-attack 1-0 > 
+    2: < Slot pet-deer 1-1 none 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-ant 5-5 none 1-0 > 
+    
+
+Turn: 10
+0: < Slot pet-shark 6-6 none 1-0 > 
+    1: < Slot pet-mosquito 4-4 none 1-0 > 
+    2: < Slot pet-duck 3-4 none 1-0 > 
+    3: < Slot pet-ant 5-4 none 1-0 > 
+    4: < Slot pet-deer 5-1 status-bone-attack 1-0 > 
+    
+0: < Slot pet-ant 11-9 status-bone-attack 1-0 > 
+    1: < Slot pet-monkey 1-2 none 1-0 > 
+    2: < Slot pet-duck 3-3 none 1-0 > 
+    3: < Slot pet-crocodile 8-4 none 1-0 > 
+    4: < Slot pet-shark 4-4 none 1-0 > 
+    
+0: < Slot pet-duck 2-3 none 1-0 > 
+    1: < Slot pet-ant 4-4 none 1-0 > 
+    2: < Slot pet-fish 8-5 status-bone-attack 2-0 > 
+    3: < Slot pet-deer 1-1 status-melon-armor 1-0 > 
+    4: < Slot pet-deer 5-1 status-bone-attack 1-0 > 
+    
+0: < Slot pet-fish 8-5 status-bone-attack 1-0 > 
+    1: < Slot pet-flamingo 5-4 none 1-0 > 
+    2: < Slot pet-ant 3-2 none 1-0 > 
+    3: < Slot pet-ant 7-3 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 11-6 status-bone-attack 1-0 > 
+    
+0: < Slot pet-ant 7-3 status-bone-attack 1-0 > 
+    1: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    2: < Slot pet-fish 8-5 status-bone-attack 1-0 > 
+    3: < Slot pet-ant 3-3 status-melon-armor 1-0 > 
+    4: < Slot pet-ant 4-4 status-garlic-armor 1-0 > 
+    
+0: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    1: < Slot pet-deer 1-1 none 1-0 > 
+    2: < Slot pet-duck 7-8 none 1-0 > 
+    3: < Slot pet-deer 1-1 none 1-0 > 
+    4: < Slot pet-ant 2-2 none 1-0 > 
+    
+0: < Slot pet-crocodile 9-4 none 1-0 > 
+    1: < Slot pet-rat 3-6 none 1-0 > 
+    2: < Slot pet-duck 6-3 status-bone-attack 1-0 > 
+    3: < Slot pet-deer 2-1 none 1-0 > 
+    4: < Slot pet-ant 7-6 none 1-0 > 
+    
+0: < Slot pet-fish 7-11 none 1-0 > 
+    1: < Slot pet-fly 6-6 none 1-0 > 
+    2: < Slot pet-ant 4-4 none 1-0 > 
+    3: < Slot pet-flamingo 3-2 none 1-0 > 
+    4: < Slot pet-monkey 5-2 status-bone-attack 1-0 > 
+    
+0: < Slot pet-ant 7-3 status-bone-attack 1-0 > 
+    1: < Slot pet-shark 5-5 none 1-1 > 
+    2: < Slot pet-mosquito 4-4 status-melon-armor 1-0 > 
+    3: < Slot pet-ant 9-5 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 8-4 status-bone-attack 1-0 > 
+    
+0: < Slot pet-fish 9-5 status-bone-attack 1-0 > 
+    1: < Slot pet-mosquito 9-4 status-bone-attack 1-0 > 
+    2: < Slot pet-deer 1-1 none 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-ant 5-5 none 1-0 > 
+    
+
+Turn: 11
+0: < Slot pet-shark 8-9 none 1-0 > 
+    1: < Slot pet-monkey 2-3 none 1-0 > 
+    2: < Slot pet-duck 3-4 none 1-0 > 
+    3: < Slot pet-ant 5-4 none 1-0 > 
+    4: < Slot pet-deer 5-1 status-bone-attack 1-0 > 
+    
+0: < Slot pet-ant 13-12 status-bone-attack 1-0 > 
+    1: < Slot pet-monkey 1-2 none 1-0 > 
+    2: < Slot pet-duck 3-3 none 1-0 > 
+    3: < Slot pet-crocodile 8-4 none 1-0 > 
+    4: < Slot pet-shark 4-4 none 1-0 > 
+    
+0: < Slot pet-duck 2-3 none 1-0 > 
+    1: < Slot pet-ant 9-5 status-bone-attack 1-0 > 
+    2: < Slot pet-fish 8-5 status-bone-attack 2-0 > 
+    3: < Slot pet-deer 1-1 status-melon-armor 1-0 > 
+    4: < Slot pet-deer 5-1 status-bone-attack 1-0 > 
+    
+0: < Slot pet-fish 8-5 status-bone-attack 1-0 > 
+    1: < Slot pet-shark 4-4 status-melon-armor 1-0 > 
+    2: < Slot pet-ant 3-2 status-melon-armor 1-0 > 
+    3: < Slot pet-ant 7-3 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 11-6 status-bone-attack 1-0 > 
+    
+0: < Slot pet-ant 8-4 status-bone-attack 1-0 > 
+    1: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    2: < Slot pet-fish 8-5 status-bone-attack 1-0 > 
+    3: < Slot pet-ant 3-3 status-melon-armor 1-0 > 
+    4: < Slot pet-ant 4-4 status-garlic-armor 1-0 > 
+    
+0: < Slot pet-ant 8-4 status-bone-attack 1-0 > 
+    1: < Slot pet-deer 1-1 none 1-0 > 
+    2: < Slot pet-duck 7-8 none 1-0 > 
+    3: < Slot pet-deer 3-3 none 1-0 > 
+    4: < Slot pet-ant 2-2 none 1-0 > 
+    
+0: < Slot pet-crocodile 11-7 none 1-0 > 
+    1: < Slot pet-monkey 1-2 none 1-0 > 
+    2: < Slot pet-shark 4-5 none 1-0 > 
+    3: < Slot pet-deer 2-1 none 1-0 > 
+    4: < Slot pet-ant 7-6 none 1-0 > 
+    
+0: < Slot pet-fish 13-14 status-bone-attack 1-0 > 
+    1: < Slot pet-fly 6-6 none 1-0 > 
+    2: < Slot pet-ant 4-4 status-melon-armor 1-0 > 
+    3: < Slot pet-flamingo 3-2 none 1-0 > 
+    4: < Slot pet-monkey 5-2 status-bone-attack 1-0 > 
+    
+0: < Slot pet-ant 7-3 status-bone-attack 1-0 > 
+    1: < Slot pet-shark 5-5 none 1-1 > 
+    2: < Slot pet-mosquito 5-5 status-melon-armor 1-0 > 
+    3: < Slot pet-ant 9-5 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 8-4 status-bone-attack 1-0 > 
+    
+0: < Slot pet-fish 9-5 status-bone-attack 1-0 > 
+    1: < Slot pet-mosquito 12-7 status-bone-attack 1-0 > 
+    2: < Slot pet-deer 21-1 status-steak-attack 1-0 > 
+    3: < Slot pet-ant 2-2 none 1-0 > 
+    4: < Slot pet-ant 5-5 none 1-0 > 
+    
+
+Turn: 12
+0: < Slot pet-shark 10-12 none 1-0 > 
+    1: < Slot pet-monkey 2-3 none 1-0 > 
+    2: < Slot pet-duck 7-4 status-bone-attack 1-0 > 
+    3: < Slot pet-ant 9-4 status-bone-attack 1-0 > 
+    4: < Slot pet-deer 5-1 status-bone-attack 1-0 > 
+    
+0: < Slot pet-ant 15-15 status-bone-attack 1-0 > 
+    1: < Slot pet-monkey 1-2 none 1-0 > 
+    2: < Slot pet-duck 3-3 none 1-0 > 
+    3: < Slot pet-crocodile 8-4 none 1-0 > 
+    4: < Slot pet-shark 4-4 none 1-0 > 
+    
+0: < Slot pet-duck 23-4 status-steak-attack 1-0 > 
+    1: < Slot pet-ant 9-5 status-bone-attack 1-0 > 
+    2: < Slot pet-fish 8-5 status-bone-attack 2-0 > 
+    3: < Slot pet-deer 1-1 status-melon-armor 1-0 > 
+    4: < Slot pet-deer 5-1 status-bone-attack 1-0 > 
+    
+0: < Slot pet-fish 8-5 status-bone-attack 1-0 > 
+    1: < Slot pet-shark 4-4 status-melon-armor 1-0 > 
+    2: < Slot pet-ant 3-2 status-melon-armor 1-0 > 
+    3: < Slot pet-ant 7-3 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 11-6 status-bone-attack 1-0 > 
+    
+0: < Slot pet-ant 8-4 status-bone-attack 1-0 > 
+    1: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    2: < Slot pet-fish 8-5 status-bone-attack 1-0 > 
+    3: < Slot pet-ant 3-3 status-melon-armor 1-0 > 
+    4: < Slot pet-ant 5-5 status-garlic-armor 1-0 > 
+    
+0: < Slot pet-ant 8-4 status-bone-attack 1-0 > 
+    1: < Slot pet-deer 3-3 status-melon-armor 1-0 > 
+    2: < Slot pet-fly 5-6 none 1-0 > 
+    3: < Slot pet-deer 3-3 none 1-0 > 
+    4: < Slot pet-ant 2-2 none 1-0 > 
+    
+0: < Slot pet-crocodile 13-10 none 1-0 > 
+    1: < Slot pet-monkey 1-2 none 1-0 > 
+    2: < Slot pet-shark 4-5 none 1-0 > 
+    3: < Slot pet-deer 2-1 status-garlic-armor 1-0 > 
+    4: < Slot pet-ant 7-6 none 1-0 > 
+    
+0: < Slot pet-fish 15-17 status-bone-attack 1-0 > 
+    1: < Slot pet-fly 9-9 none 1-0 > 
+    2: < Slot pet-ant 4-4 status-melon-armor 1-0 > 
+    3: < Slot pet-flamingo 3-2 none 1-0 > 
+    4: < Slot pet-monkey 5-2 status-bone-attack 1-0 > 
+    
+0: < Slot pet-ant 10-7 status-bone-attack 1-0 > 
+    1: < Slot pet-shark 5-5 none 1-1 > 
+    2: < Slot pet-monkey 1-2 none 1-0 > 
+    3: < Slot pet-ant 9-5 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 8-4 status-bone-attack 1-0 > 
+    
+0: < Slot pet-fish 9-5 status-bone-attack 1-0 > 
+    1: < Slot pet-mosquito 9-4 status-bone-attack 1-0 > 
+    2: < Slot pet-deer 21-1 status-steak-attack 1-0 > 
+    3: < Slot pet-ant 2-2 status-melon-armor 1-0 > 
+    4: < Slot pet-ant 25-5 status-steak-attack 1-0 > 
+    
+
+Turn: 13
+0: < Slot pet-shark 32-15 status-steak-attack 1-0 > 
+    1: < Slot pet-monkey 2-3 none 1-0 > 
+    2: < Slot pet-duck 7-4 status-bone-attack 1-0 > 
+    3: < Slot pet-ant 9-4 status-bone-attack 1-0 > 
+    4: < Slot pet-deer 5-1 status-bone-attack 1-0 > 
+    
+0: < Slot pet-ant 17-18 status-bone-attack 1-0 > 
+    1: < Slot pet-monkey 1-2 none 1-0 > 
+    2: < Slot pet-duck 3-3 none 1-0 > 
+    3: < Slot pet-crocodile 8-4 none 1-0 > 
+    4: < Slot pet-shark 4-4 none 1-0 > 
+    
+0: < Slot pet-duck 7-4 status-bone-attack 1-0 > 
+    1: < Slot pet-ant 9-5 status-bone-attack 1-0 > 
+    2: < Slot pet-fish 10-7 status-bone-attack 2-0 > 
+    3: < Slot pet-deer 1-1 status-melon-armor 1-0 > 
+    4: < Slot pet-deer 5-1 status-bone-attack 1-0 > 
+    
+0: < Slot pet-fish 10-7 status-bone-attack 1-0 > 
+    1: < Slot pet-shark 5-5 status-melon-armor 1-0 > 
+    2: < Slot pet-ant 3-2 status-melon-armor 1-0 > 
+    3: < Slot pet-ant 7-3 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 11-6 status-bone-attack 1-0 > 
+    
+0: < Slot pet-ant 8-4 status-bone-attack 1-0 > 
+    1: < Slot pet-ant 9-5 status-bone-attack 1-0 > 
+    2: < Slot pet-shark 4-4 none 1-0 > 
+    3: < Slot pet-ant 3-3 status-melon-armor 1-0 > 
+    4: < Slot pet-ant 5-5 status-garlic-armor 1-0 > 
+    
+0: < Slot pet-ant 8-4 status-bone-attack 1-0 > 
+    1: < Slot pet-deer 4-4 status-melon-armor 1-0 > 
+    2: < Slot pet-fly 5-6 none 1-0 > 
+    3: < Slot pet-deer 4-4 none 1-0 > 
+    4: < Slot pet-ant 2-2 none 1-0 > 
+    
+0: < Slot pet-crocodile 15-13 status-melon-armor 1-0 > 
+    1: < Slot pet-monkey 1-2 none 1-0 > 
+    2: < Slot pet-shark 4-5 none 1-0 > 
+    3: < Slot pet-deer 2-1 status-garlic-armor 1-0 > 
+    4: < Slot pet-ant 7-6 none 1-0 > 
+    
+0: < Slot pet-fish 17-20 status-bone-attack 1-0 > 
+    1: < Slot pet-fly 26-6 status-steak-attack 1-0 > 
+    2: < Slot pet-ant 4-4 status-melon-armor 1-0 > 
+    3: < Slot pet-flamingo 5-4 none 1-0 > 
+    4: < Slot pet-monkey 5-2 status-bone-attack 1-0 > 
+    
+0: < Slot pet-ant 12-10 status-bone-attack 1-0 > 
+    1: < Slot pet-shark 5-5 none 1-1 > 
+    2: < Slot pet-monkey 1-2 status-melon-armor 1-0 > 
+    3: < Slot pet-ant 9-5 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 8-4 status-bone-attack 1-0 > 
+    
+0: < Slot pet-fish 10-6 status-bone-attack 1-0 > 
+    1: < Slot pet-mosquito 9-4 status-bone-attack 1-0 > 
+    2: < Slot pet-deer 21-1 status-steak-attack 1-0 > 
+    3: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 25-5 status-steak-attack 1-0 > 
+    
+
+Turn: 14
+0: < Slot pet-shark 34-18 status-steak-attack 1-0 > 
+    1: < Slot pet-monkey 2-3 none 1-0 > 
+    2: < Slot pet-duck 7-4 status-bone-attack 1-0 > 
+    3: < Slot pet-ant 9-4 status-bone-attack 1-0 > 
+    4: < Slot pet-deer 5-1 status-bone-attack 1-0 > 
+    
+0: < Slot pet-ant 19-21 status-bone-attack 1-0 > 
+    1: < Slot pet-monkey 1-2 none 1-0 > 
+    2: < Slot pet-duck 3-3 none 1-0 > 
+    3: < Slot pet-crocodile 8-4 none 1-0 > 
+    4: < Slot pet-shark 4-4 none 1-0 > 
+    
+0: < Slot pet-duck 7-4 status-bone-attack 1-0 > 
+    1: < Slot pet-ant 11-7 status-bone-attack 1-0 > 
+    2: < Slot pet-fish 6-7 status-melon-armor 2-0 > 
+    3: < Slot pet-deer 1-1 status-melon-armor 1-0 > 
+    4: < Slot pet-deer 5-1 status-bone-attack 1-0 > 
+    
+0: < Slot pet-crocodile 8-4 none 1-0 > 
+    1: < Slot pet-shark 5-5 status-garlic-armor 1-0 > 
+    2: < Slot pet-ant 3-2 status-melon-armor 1-0 > 
+    3: < Slot pet-ant 7-3 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 11-6 status-bone-attack 1-0 > 
+    
+0: < Slot pet-ant 8-4 status-bone-attack 1-0 > 
+    1: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    2: < Slot pet-shark 4-4 status-garlic-armor 1-0 > 
+    3: < Slot pet-ant 3-3 status-melon-armor 1-0 > 
+    4: < Slot pet-ant 6-6 status-garlic-armor 1-0 > 
+    
+0: < Slot pet-ant 8-4 status-bone-attack 1-0 > 
+    1: < Slot pet-deer 5-5 status-melon-armor 1-0 > 
+    2: < Slot pet-fly 5-6 none 1-0 > 
+    3: < Slot pet-deer 4-4 none 1-0 > 
+    4: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    
+0: < Slot pet-crocodile 17-16 status-melon-armor 1-0 > 
+    1: < Slot pet-monkey 1-2 none 1-0 > 
+    2: < Slot pet-shark 4-5 none 1-0 > 
+    3: < Slot pet-deer 2-1 status-garlic-armor 1-0 > 
+    4: < Slot pet-ant 11-6 status-bone-attack 1-0 > 
+    
+0: < Slot pet-fish 19-23 status-bone-attack 1-0 > 
+    1: < Slot pet-fly 27-7 status-steak-attack 1-1 > 
+    2: < Slot pet-ant 4-4 status-melon-armor 1-0 > 
+    3: < Slot pet-flamingo 5-4 none 1-0 > 
+    4: < Slot pet-monkey 5-2 status-bone-attack 1-0 > 
+    
+0: < Slot pet-ant 30-13 status-steak-attack 1-0 > 
+    1: < Slot pet-shark 9-5 status-bone-attack 1-1 > 
+    2: < Slot pet-monkey 1-2 status-melon-armor 1-0 > 
+    3: < Slot pet-ant 9-5 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 8-4 status-bone-attack 1-0 > 
+    
+0: < Slot pet-fish 10-6 status-bone-attack 1-0 > 
+    1: < Slot pet-mosquito 12-7 status-bone-attack 1-0 > 
+    2: < Slot pet-deer 21-1 status-steak-attack 1-0 > 
+    3: < Slot pet-ant 6-2 status-bone-attack 1-0 > 
+    4: < Slot pet-ant 25-5 status-steak-attack 1-0 > 
+    
+
