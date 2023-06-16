@@ -4,6 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "Train",
             "type": "python",
@@ -19,6 +20,15 @@
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/pretrain_model.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            //"args": ["-Xfrozen_modules=off"],
+        },
+        {
+            "name": "Train Order Model",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/train_reorder.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             //"args": ["-Xfrozen_modules=off"],

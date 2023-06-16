@@ -328,16 +328,20 @@ def end_turn(player : Player) -> str:
 # Model Functions #
 ###################
 
-def call_action_from_q_index(player : Player, q_idx : int) -> str:
+def call_action_from_q_index(player : Player, q_idx : int, food_net = None, epsilon: float = None) -> str:
     # This code is gross, but it just defines the ranges the actions take
     if not isinstance(q_idx, int):
         q_idx = int(q_idx)
+
+    return_food_index = True if food_net is not None else False
+    food_return_index = None
+    selected_pet = None
 
     assert q_idx >= 0 and q_idx < action_ranges[-1]
 
     if q_idx == 0: # Roll
         #print("Rolling")
-        return roll(player)
+        ret_val =  roll(player)
     elif q_idx >= action_ranges[0] and q_idx < action_ranges[1]: # Buy pet
         #print("Buying pet")
         pet_list_index = q_idx - action_ranges[0]
@@ -345,11 +349,11 @@ def call_action_from_q_index(player : Player, q_idx : int) -> str:
         pet_shop_list = [pet.name for pet in player.shop.pets if pet.name != "pet-none"]
         
         if pet_to_buy not in pet_shop_list:
-            return "invalid_idx"
-        
-        buy_idx = pet_shop_list.index(pet_to_buy)
+            ret_val = "invalid_idx"
+        else:
+            buy_idx = pet_shop_list.index(pet_to_buy)
 
-        return buy_pet(player, buy_idx)
+            ret_val = buy_pet(player, buy_idx)
     elif q_idx >= action_ranges[1] and q_idx < action_ranges[2]: # Sell pet
         #print("Selling pet")
         pet_list_index = q_idx - action_ranges[1]
@@ -357,27 +361,24 @@ def call_action_from_q_index(player : Player, q_idx : int) -> str:
         pet_team_list = [slot.pet.name for slot in player.team.slots]
 
         if pet_to_sell not in pet_team_list:
-            return "invalid_idx"
-        
-        sell_idx = pet_team_list.index(pet_to_sell)
+            ret_val = "invalid_idx"
+        else:        
+            sell_idx = pet_team_list.index(pet_to_sell)
 
-        return sell(player, sell_idx)
+            ret_val = sell(player, sell_idx)
     elif q_idx >= action_ranges[2] and q_idx < action_ranges[3]: # Buy food
-        if player.team.filled == []:
-            return "invalid_idx"
-        
         #print("Buying food")
         food_list_index = q_idx - action_ranges[2]
         food_to_buy = idx2food[food_list_index]
         food_shop_list = [food.name for food in player.shop.foods if food.name != "food-none"]
 
-        if food_to_buy not in food_shop_list:
-            return "invalid_idx"
-        
-        food_buy_idx = food_shop_list.index(food_to_buy)
-        pet_index = auto_assign_food_to_pet(food_to_buy, player)
+        if food_to_buy not in food_shop_list or player.team.filled == []:
+            ret_val = "invalid_idx"
+        else:
+            food_buy_idx = food_shop_list.index(food_to_buy)
+            food_return_index, selected_pet = auto_assign_food_to_pet(food_to_buy, player, food_net = food_net, epsilon = epsilon)
 
-        return buy_food(player, food_buy_idx, pet_index)
+            ret_val = buy_food(player, food_buy_idx, food_return_index)
     elif q_idx >= action_ranges[3] and q_idx < action_ranges[4]: # Combine
         #print("Combining")
         pet_list_index = q_idx - action_ranges[3]
@@ -385,11 +386,10 @@ def call_action_from_q_index(player : Player, q_idx : int) -> str:
         pet_team_list = [slot.pet.name for slot in player.team.slots]
 
         if pet_team_list.count(pet_to_combine) < 2:
-            return "invalid_idx"
-        
-        combine_idx = pet_team_list.index(pet_to_combine)
-
-        return combine(player, combine_idx)
+            ret_val = "invalid_idx"
+        else:
+            combine_idx = pet_team_list.index(pet_to_combine)
+            ret_val = combine(player, combine_idx)
     elif q_idx >= action_ranges[4] and q_idx < action_ranges[5]: # Freeze
         #print("Freezing")
         freezable_index = q_idx - action_ranges[4]
@@ -401,9 +401,9 @@ def call_action_from_q_index(player : Player, q_idx : int) -> str:
                 break
 
         if freeze_idx == -1:
-            return "invalid_idx"
-        
-        return freeze(player, freeze_idx)
+            ret_val = "invalid_idx"
+        else:
+            ret_val = freeze(player, freeze_idx)
     elif q_idx >= action_ranges[5] and q_idx < action_ranges[6]: # Unfreeze
         #print("Unfreezing")
         unfreezable_index = q_idx - action_ranges[5]
@@ -415,26 +415,39 @@ def call_action_from_q_index(player : Player, q_idx : int) -> str:
                 break
 
         if unfreeze_idx == -1:
-            return "invalid_idx"
-
-        return unfreeze(player, unfreeze_idx)
+            ret_val = "invalid_idx"
+        else:
+            ret_val = unfreeze(player, unfreeze_idx)
     elif q_idx >= action_ranges[6] and q_idx < action_ranges[7]: # End turn
         #print("Ending turn")
-        return end_turn(player)
+        ret_val = end_turn(player)
     #except Exception as e:
     #    print("Something went wrong in call_action_from_q_index: ", e)
     #    player.gold += 1
     #    player.roll()
-    
-    return "success"
 
-def auto_order_team(player : Player) -> Player:
+    if return_food_index: return ret_val, food_return_index, selected_pet
+    else: return ret_val
+
+def auto_order_team(player, return_order_indexes = False, return_team = True) -> Player:
     # Orders pets from 1. Bias, 2. Total stats (attack + health)
+
+    if isinstance(player, Team):
+        player = Player(team = player)
 
     value_pairs = [(pet_idx, player.team.slots[pet_idx]) for pet_idx in player.team.filled]
     value_pairs = sorted(value_pairs, key = lambda x : (pet_auto_order_bias[x[1].pet.name], x[1].attack + x[1].health), reverse = True)
 
     player.reorder([x[0] for x in value_pairs])
+
+    if return_order_indexes and return_team:
+        order_indexes = [x[0] for x in value_pairs] + [i for i in range(5) if player.team.slots[i].pet.name == "pet-none"]
+        return deepcopy(player.team), order_indexes
+    elif return_order_indexes:
+        order_indexes = [x[0] for x in value_pairs]
+        return order_indexes
+    elif return_team:
+        return deepcopy(player.team)
 
 food_types = {
     "single_target_stat_up": {"food-apple", "food-cupcake", 'food-pear', 'food-milk'},
@@ -444,45 +457,94 @@ food_types = {
     "level_up": {"food-chocolate"}
 }
 
-def auto_assign_food_to_pet(food : str, player : Player) -> Player:
-    if food in food_types["single_target_stat_up"]:
-        pet_team_list = [slot.pet.name for slot in player.team.slots]
-        if "pet-seal" in pet_team_list:
-            return pet_team_list.index("pet-seal")
-        elif "pet-worm" in pet_team_list:
-            return pet_team_list.index("pet-worm")
+def auto_assign_food_to_pet(food : str, player : Player, food_net = None, epsilon : float = 1.0) -> Player:
+    # Use food_net to determine which pet to assign food to
+    if food_net is not None:
+        if len(player.team.filled) == 0:
+            return None
         
-        legal_indexes = [i for i, slot in enumerate(player.team.slots) if slot.pet.name != "pet-none"]
-        
-        return random.sample(legal_indexes, 1)[0]
-    elif food in food_types["multi_target_stat_up"]:
-        legal_indexes = [i for i, slot in enumerate(player.team.slots) if slot.pet.name != "pet-none"]
-        return random.sample(legal_indexes, 1)[0]
-    elif food in food_types["effect"]:
-        has_no_effect_item = [i for i, slot in enumerate(player.team.slots) if slot.pet.name != "pet-none" and slot.pet.status == "none"]
-        if len(has_no_effect_item) > 0:
-            return_idx = random.sample(has_no_effect_item, 1)[0]
-            return return_idx
-        else:
-            has_effect_item = [i for i, slot in enumerate(player.team.slots) if slot.pet.name != "pet-none" and slot.pet.status != "none"]
-            return_idx = random.sample(has_effect_item, 1)[0]
-            return return_idx
-    elif food in food_types["death_causes"]:
-        faint_pets = [i for i, slot in enumerate(player.team.slots) if slot.pet.name != "pet-none" and slot.pet.ability['trigger'] == "Faint"]
-        if len(faint_pets) > 0:
-            faint_pet_idx = random.sample(faint_pets, 1)[0]
-            return faint_pet_idx
-        else:
-            nonfaint_pets = [i for i, slot in enumerate(player.team.slots) if slot.pet.name != "pet-none" and not slot.pet.ability['trigger'] == "Faint"]
-            faint_pet_idx = random.sample(nonfaint_pets, 1)[0]
-            return faint_pet_idx
-    elif food in food_types["level_up"]:
-        pet_experience = np.array([slot.pet.experience if slot.pet.name != "pet-none" else -1 for slot in player.team.slots])
-        pet_level_3 = np.array([slot.pet.level == 3 if slot.pet.name != "pet-none" else False for slot in player.team.slots])
-        pet_experience[pet_level_3] = -1
-        return int(np.argmax(pet_experience))
+        random_val = random.uniform(0, 1)
 
-    raise Exception("Food type not found")
+        if random_val > epsilon or epsilon is None: # Choose random action
+            encoding = food_net.state_to_encoding(player, food_selected_name = food)
+            _, q_actions = food_net(encoding, return_food_actions = True)
+            q_actions = q_actions.squeeze(0)
+
+            pet_names = [slot.pet.name for slot in player.team.slots]
+            illegal_indexes = [i for i in range(len(pet2idx)) if idx2pet[i] not in pet_names]
+            q_actions[np.array(illegal_indexes)] = -1e9
+
+            type_of_animal_chosen_idx = torch.argmax(q_actions).item()
+            type_of_animal_chosen = idx2pet[type_of_animal_chosen_idx]
+
+            return_pet_val = [i for i, slot in enumerate(player.team.slots) if slot.pet.name == type_of_animal_chosen]
+            return_pet_val = random.sample(return_pet_val, 1)[0]
+
+            return return_pet_val, type_of_animal_chosen
+
+        else: # Choose action based on food_net
+            legal_indexes = [i for i, slot in enumerate(player.team.slots) if slot.pet.name != "pet-none"]
+            random_pet = random.sample(legal_indexes, 1)[0]
+            return random_pet, player.team.slots[random_pet].pet.name
+        
+    else: # Use procedural food:
+        if food in food_types["single_target_stat_up"]:
+            pet_team_list = [slot.pet.name for slot in player.team.slots]
+            if "pet-seal" in pet_team_list:
+                return pet_team_list.index("pet-seal"), "pet-seal"
+            elif "pet-worm" in pet_team_list:
+                return pet_team_list.index("pet-worm"), "pet-worm"
+            
+            legal_indexes = [i for i, slot in enumerate(player.team.slots) if slot.pet.name != "pet-none"]
+            selected_pet = _get_highest_stat_pet(player, legal_indexes)
+
+            return selected_pet, player.team.slots[selected_pet].pet.name
+        elif food in food_types["multi_target_stat_up"]:
+            legal_indexes = [i for i, slot in enumerate(player.team.slots) if slot.pet.name != "pet-none"]
+            selected_pet = _get_highest_stat_pet(player, legal_indexes)
+
+            return selected_pet, player.team.slots[selected_pet].pet.name
+        elif food in food_types["effect"]:
+            has_no_effect_item = [i for i, slot in enumerate(player.team.slots) if slot.pet.name != "pet-none" and slot.pet.status == "none"]
+            if len(has_no_effect_item) > 0:
+                return_idx = _get_highest_stat_pet(player, has_no_effect_item)
+                return return_idx, player.team.slots[return_idx].pet.name
+            else:
+                has_effect_item = [i for i, slot in enumerate(player.team.slots) if slot.pet.name != "pet-none" and slot.pet.status != "none"]
+                return_idx = _get_highest_stat_pet(player, has_effect_item)
+                return return_idx, player.team.slots[return_idx].pet.name
+        elif food in food_types["death_causes"]:
+            faint_pets = [i for i, slot in enumerate(player.team.slots) if slot.pet.name != "pet-none" and slot.pet.ability['trigger'] == "Faint"]
+            if len(faint_pets) > 0:
+                faint_pet_idx = _get_highest_stat_pet(player, faint_pets)
+                return faint_pet_idx, player.team.slots[faint_pet_idx].pet.name
+            else:
+                nonfaint_pets = [i for i, slot in enumerate(player.team.slots) if slot.pet.name != "pet-none" and not slot.pet.ability['trigger'] == "Faint"]
+                faint_pet_idx = _get_highest_stat_pet(player, nonfaint_pets)
+                return faint_pet_idx, player.team.slots[faint_pet_idx].pet.name
+        elif food in food_types["level_up"]:
+            pet_experience = np.array([slot.pet.experience if slot.pet.name != "pet-none" else -5 for slot in player.team.slots])
+            pet_level_3 = np.array([slot.pet.level == 3 if slot.pet.name != "pet-none" else False for slot in player.team.slots])
+            pet_experience[pet_level_3] = -1
+            selected_pet = int(np.argmax(pet_experience))
+        
+            return selected_pet, player.team.slots[selected_pet].pet.name
+
+        raise Exception("Food type not found")
+
+def _get_highest_stat_pet(player : Player, list : str) -> int:
+    highest_stats = -1
+    highest_stats_index = -1
+    for i in list:
+        if player.team.slots[i].pet.name != "pet-none":
+            total_stats = player.team.slots[i].pet.health + player.team.slots[i].pet.attack 
+            if total_stats > highest_stats:
+                highest_stats = total_stats
+                highest_stats_index = i
+
+    return highest_stats_index
+
+    
 
 def action_index_to_action_type(action_number : int) -> str:
     for i in range(len(agent_actions_list) - 1):

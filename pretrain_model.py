@@ -1,6 +1,6 @@
 from config import PRETRAIN_DEFAULT_CONFIGURATION
 from model import SAPAI
-from model_actions import pet2idx, idx2pet, food2idx, idx2food
+from model_actions import pet2idx, idx2pet, food2idx, idx2food, auto_assign_food_to_pet
 
 from copy import deepcopy
 import random
@@ -18,7 +18,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-IN_FEATURES = 1800
+IN_FEATURES = 4800
 
 # 1) NoP: Number of Pets
 def NoP_net(config):
@@ -92,6 +92,15 @@ def NW_net(config):
 
 def NW_get_gt(player : Player):
     return [player.wins]
+
+# 9) Matching food heuristic
+def MFH_net(config):
+    return None
+
+def MFH_get_gt(player : Player):
+    random_food = random.choice(list(food2idx.keys()))
+    index_returned = auto_assign_food_to_pet(random_food, player.team)
+    return [index_returned]
 
 # Utilities
 def get_random_pet_percentages():
@@ -212,6 +221,8 @@ def pretrain_model():
     model = SAPAI(config = config, phase = "training")
     model = model.to("cuda" if torch.cuda.is_available() else "cpu")
 
+    food_list = list(food2idx.keys())
+
     # Name, net, get_gt, normalize_value
     pretraining_actions = (
         ("NoP", NoP_net, NoP_get_gt, 5.0),
@@ -227,7 +238,7 @@ def pretrain_model():
     out_nets = [action_net(config) for _, action_net, _, _ in pretraining_actions]
 
     # Load model
-    model_file = None#"pretrained_model_2000.pth"
+    model_file = None#"pretrained_model_13000.pth"
     if model_file is not None:
         checkpoint = torch.load(model_file)
         model.load_state_dict(checkpoint["model"])
@@ -239,7 +250,7 @@ def pretrain_model():
         out_nets[5].load_state_dict(checkpoint["TE_net"])
         out_nets[6].load_state_dict(checkpoint["NL_net"])
         out_nets[7].load_state_dict(checkpoint["NW_net"])
-        evaluate_pretrained_model(model, out_nets, pretraining_actions)
+        #evaluate_pretrained_model(model, out_nets, pretraining_actions)
 
     params = [model.parameters()] + [net.parameters() for net in out_nets]
     params = chain(*params)
@@ -257,6 +268,7 @@ def pretrain_model():
 
         loss_total = 0.0
 
+        # Pretrain shop ideas
         for (action_name, _, get_ground_truth_function, normalize_value), action_net in zip(pretraining_actions, out_nets):
             optim.zero_grad()
 
@@ -274,6 +286,27 @@ def pretrain_model():
             loss_categories[action_name].append(loss.item())
             loss_total += loss.item()
 
+        # Pretraining food heuristic
+        players_with_pets_mask = [len(player.team.filled) > 0 for player in player_list]
+        players_with_pets = np.array(player_list)[players_with_pets_mask]
+        players_with_pets_encodings = player_encodings[players_with_pets_mask]
+        if len(players_with_pets) != 0:
+            optim.zero_grad()
+            food_chosen_per_player = [random.choice(food_list) for _ in range(players_with_pets.shape[0])]
+            ground_truth = [auto_assign_food_to_pet(food, player) for player, food in zip(players_with_pets, food_chosen_per_player)]
+            ground_truth = [pet2idx[pet_val[1]] for pet_val in ground_truth]
+            player_encodings_out = model.add_food_index_to_encoding(players_with_pets_encodings, food_chosen_per_player)
+            _, food_prediction = model.forward(player_encodings_out, return_food_actions=True)
+
+            food_heuristic_loss = F.cross_entropy(food_prediction, torch.tensor(ground_truth, device = "cuda" if torch.cuda.is_available() else "cpu"))
+            food_heuristic_loss.backward()
+            optim.step()
+
+            loss_total += food_heuristic_loss.item()
+
+            loss_history["heuristic_food"].append(food_heuristic_loss.item())
+
+        # Updating and saving
         loss_history["total_loss"].append(loss_total)
 
         for action_name, _, _, _ in pretraining_actions:
@@ -283,6 +316,7 @@ def pretrain_model():
             print(f"Epoch {epoch} - Loss: {np.mean(loss_history['total_loss'])}")
             for action_name, _, _, _ in pretraining_actions:
                 print(f"    {action_name} - Loss: {np.mean(loss_history[action_name])}")
+            print(f"    FH - Loss: {np.mean(loss_history['heuristic_food'])}")
             print()
 
             loss_history = defaultdict(list)

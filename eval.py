@@ -33,7 +33,8 @@ def evaluate_model(net : SAPAI, pt_organizer : PastTeamsOrganizer, epoch : int, 
     net.set_device("rollout")
     net.eval()
 
-    team_file_string = ""
+    team_file_string = f"EPOCH: {epoch}\n"
+    food_placed_string = f"EPOCH: {epoch}\n"
 
     if config is None:
         config = DEFAULT_CONFIGURATION
@@ -45,16 +46,15 @@ def evaluate_model(net : SAPAI, pt_organizer : PastTeamsOrganizer, epoch : int, 
     results = []
 
     # Data from the evaluation
-    actions_used = {action : 0 for action in agent_actions_list}
-    pets_bought = {pet : 0 for pet in idx2pet.values()}
-    food_bought = {food : 0 for food in idx2food.values()}
+    actions_used = {action : [0] * config["number_of_evaluation_turns"] for action in agent_actions_list}
+    pets_bought = {pet : [0] * config["number_of_evaluation_turns"] for pet in idx2pet.values()}
+    food_bought = {food : [0] * config["number_of_evaluation_turns"] for food in idx2food.values()}
 
     past_player_win_percetages = []
 
     # For each turn
     for turn_number in range(config["number_of_evaluation_turns"]):
         active_players = [player for player in players]
-        active_player_indexes = [i for i in range(len(players))]
         for action_number in range(max_number_of_actions):
             if len(active_players) == 0:
                 break
@@ -62,24 +62,32 @@ def evaluate_model(net : SAPAI, pt_organizer : PastTeamsOrganizer, epoch : int, 
             actions_taken = np.array([get_best_legal_move(player, net, config = config, epoch = epoch) for player in active_players])
 
             action_type_taken_idx = [action_index_to_action_type(action) for action in actions_taken]
-            for action_type in action_type_taken_idx: actions_used[action_type] += 1
+            for action_type in action_type_taken_idx: actions_used[action_type][turn_number] += 1
 
             # For each action
             for player, action in zip(active_players, actions_taken):
+                return_food_val = None
+
                 try:
                     if action != N_ACTIONS - 1:
-                        call_action_from_q_index(player, action.item())
+                        _, return_food_val, pet_purchased = call_action_from_q_index(player, action.item(), food_net = net, epsilon = -0.10)
                 except:
                     player.gold += 1
                     player.roll()
+                    continue
+
+                # If food was bought
+                if return_food_val is not None:
+                    food_placed_string += str(player.team)
+                    food_placed_string += f"{pet_purchased} ate food {idx2food[action.item() - action_beginning_index[action2index['buy_food']]]}\n\n"
 
                 # if bought pet
                 if action >= action_beginning_index[action2index["buy_pet"]] and action < action_beginning_index[action2index["buy_pet"]] + num_agent_actions["buy_pet"]:
-                    pets_bought[idx2pet[action - action_beginning_index[action2index["buy_pet"]]]] += 1
+                    pets_bought[idx2pet[action - action_beginning_index[action2index["buy_pet"]]]][turn_number] += 1
 
                 # if bought food
                 if action >= action_beginning_index[action2index["buy_food"]] and action < action_beginning_index[action2index["buy_food"]] + num_agent_actions["buy_food"]:
-                    food_bought[idx2food[action - action_beginning_index[action2index["buy_food"]]]] += 1
+                    food_bought[idx2food[action - action_beginning_index[action2index["buy_food"]]]][turn_number] += 1
 
             # Remove players that have pressed end turn
             not_ended_turns = actions_taken != (N_ACTIONS - 1)
@@ -117,12 +125,17 @@ def evaluate_model(net : SAPAI, pt_organizer : PastTeamsOrganizer, epoch : int, 
 
         results.append(avg_wins)
 
-    # Save the file as "teams.txt"
+    # Save the file as "teams.txt" appending to the end of the file
     with open("teams.txt", "w") as f:
         f.write(team_file_string)
     
+    # Save the file as "food_placed.txt"
+    with open("food_placed.txt", "w") as f:
+        f.write(food_placed_string)
+    
     if USE_WANDB:
         wandb.save("teams.txt")
+        wandb.save("food_placed.txt")
 
     if epoch % 3 == 0:
         return results, actions_used, past_player_win_percetages, pets_bought, food_bought
@@ -214,10 +227,9 @@ def visualize_rollout(net: SAPAI, config : dict):
 
     epoch = 100
 
-
     while True:
         action_number, q_values = get_best_legal_move(player, net, config = config, epoch = epoch, return_q_values = True)
-        return_signal = call_action_from_q_index(player, action_number)
+        ret_val, food_return_index, selected_pet = call_action_from_q_index(player, action_number, food_net = net, epsilon = -0.1)
 
         top_values = torch.topk(q_values, 5)
         top_values = [f"{top_values[0][i].item():.2f} {action_idx_to_string(top_values[1][i].item())}" for i in range(5)]
@@ -226,7 +238,8 @@ def visualize_rollout(net: SAPAI, config : dict):
         print("Player:", player)
         print("Action:", action_str)
         print("Top Moves:", top_values)
-        print("Top actions:")
+        if selected_pet is not None:
+            print("Selected Pet:", selected_pet)
         print()
 
         if action_number == (N_ACTIONS - 1):
@@ -304,12 +317,12 @@ def get_best_legal_move(player : Player, net : SAPAI, config : dict, epoch = 20,
 
 def create_epoch_illegal_mask(epoch, config):
     action_mask = np.ones(N_ACTIONS)
-    if epoch >= config["illegalize_rolling"][0] and epoch <= config["illegalize_rolling"][1]:
+    if "illegalize_rolling" in config and (epoch >= config["illegalize_rolling"][0] and epoch <= config["illegalize_rolling"][1]):
         action_mask[action_beginning_index[action2index["roll"]]:action_beginning_index[action2index["roll"] + 1]] = 0
-    if epoch >= config["illegalize_freeze_unfreeze"][0] and epoch <= config["illegalize_freeze_unfreeze"][1]:
+    if "illegalize_freeze_unfreeze" in config and (epoch >= config["illegalize_freeze_unfreeze"][0] and epoch <= config["illegalize_freeze_unfreeze"][1]):
         action_mask[action_beginning_index[action2index["freeze"]]:action_beginning_index[action2index["freeze"] + 1]] = 0
         action_mask[action_beginning_index[action2index["unfreeze"]]:action_beginning_index[action2index["unfreeze"] + 1]] = 0
-    if epoch >= config["illegalize_combine"][0] and epoch <= config["illegalize_combine"][1]:
+    if "illegalize_combine" in config and (epoch >= config["illegalize_combine"][0] and epoch <= config["illegalize_combine"][1]):
         action_mask[action_beginning_index[action2index["combine"]]:action_beginning_index[action2index["combine"] + 1]] = 0
 
     return action_mask

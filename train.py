@@ -18,6 +18,8 @@ import dask
 from dask.distributed import Client, LocalCluster
 from dask import delayed
 
+import pandas as pd
+
 
 current_directory = os.getcwd()
 sys.path.append(current_directory + '/sapai_gym')
@@ -104,8 +106,13 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float, epoch : int, pt_
 
             # 2) Performing actions and getting mid-turn rewards:
             for player_number, player, action in zip(active_players, active_player_list, move_actions):
-                before_action_total_stats = sum([slot.health + slot.attack for slot in player.team.slots if not slot.empty])
-                result_string = call_action_from_q_index(player, int(action))
+                if config["allow_stat_increase_as_reward"] and reward is not None:
+                    before_action_total_stats = sum([slot.health + slot.attack for slot in player.team.slots if not slot.empty])
+
+                result_string, _, selected_pet = call_action_from_q_index(player, int(action), food_net = net, epsilon = epsilon)
+
+                if selected_pet is not None:
+                    selected_pet = pet2idx[selected_pet]
 
                 reward = result_string_to_rewards[result_string]
 
@@ -126,6 +133,8 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float, epoch : int, pt_
                     "reward": reward,
                     "next_state": deepcopy(player),
                     "next_state_encoding": torch.squeeze(next_state_encoding).cpu().numpy(),
+                    "food_action": selected_pet,
+                    "food_reward": None,
                 })
 
             # 3) Removing players who have ended their turn
@@ -148,6 +157,8 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float, epoch : int, pt_
                 "reward": None,
                 "next_state_encoding": deepcopy(encoding_next_state),
                 "next_state": deepcopy(player),
+                "food_action": None,
+                "food_reward": None,
             })
 
         ##########
@@ -186,12 +197,29 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float, epoch : int, pt_
 
         # Update the player_turn_action_replays
         for player_number in player_turn_action_replays:
+            freeze_count = 0
+            unfreeze_count = 0
             for action_replay in player_turn_action_replays[player_number]:
                 if action_replay["reward"] is None:
                     action_replay["reward"] = player_end_turn_rewards[player_number]
 
                     if config["allow_penalty_for_unused_gold"]:
                         action_replay["reward"] -= 0.1 * action_replay["next_state"].gold
+
+                    # Adding the food reward (same as battle reward) for each food action that is not None
+                    for action_replay_food in player_turn_action_replays[player_number]:
+                        if action_replay_food["food_action"] is not None:
+                            action_replay_food["food_reward"] = player_end_turn_rewards[player_number]
+
+                if config['allow_multi_freeze_unfreeze_penalty']:
+                    if action_replay["action"] >= action_beginning_index[action2index["freeze"]] and action_replay["action"] < action_beginning_index[action2index["freeze"]] + num_agent_actions["freeze"]:
+                        if freeze_count >= 3:
+                            action_replay["reward"] -= 0.1 * freeze_count
+                        freeze_count += 1
+                    if action_replay["action"] >= action_beginning_index[action2index["unfreeze"]] and action_replay["action"] < action_beginning_index[action2index["unfreeze"]] + num_agent_actions["unfreeze"]:
+                        if unfreeze_count >= 3:
+                            action_replay["reward"] -= 0.1 * unfreeze_count
+                        unfreeze_count += 1
 
                 if config['allow_combine_reward'] and action_replay["action"] >= action_beginning_index[action2index["combine"]] and action_replay["action"] < action_beginning_index[action2index["combine"]] + num_agent_actions["combine"]:
                     action_replay["reward"] += 1.0
@@ -285,14 +313,14 @@ def update_prediction_weights(policy_net : SAPAI, target_net : SAPAI, experience
 
     target_net = target_net.to(training_device)
     target_net.set_device("training")
-    target_net.eval()
+    target_net.train()
 
     random.shuffle(experience_replay)
 
     # putting policy net into training mode and target net into eval mode
     policy_net = deepcopy(policy_net)
     policy_net.train()
-    target_net.eval()
+    target_net.train()
 
     # Freeze the target net
     for param in target_net.parameters():
@@ -302,10 +330,13 @@ def update_prediction_weights(policy_net : SAPAI, target_net : SAPAI, experience
     optimizer = optim.Adam(policy_net.parameters(), lr=config["learning_rate"])
 
     losses = []
+    food_losses = []
 
     num_updates = int(math.ceil(int(len(experience_replay) / config["batch_size"] * config["num_updates_per_sample"]) / float(config["batch_size"])) * config["batch_size"])
 
-    # Update the prediction weights
+    number_food_updates_in_last_300 = 0
+
+    #Update the prediction weights
     for update_number in range(1, num_updates + 1):
         optimizer.zero_grad()
         
@@ -329,20 +360,49 @@ def update_prediction_weights(policy_net : SAPAI, target_net : SAPAI, experience
         where_zeros = action_mask < 0.5
         target[where_zeros] = -9999999
 
-        target, _ = torch.max(target, dim = 1)
-        target = batches['reward'] + config['gamma'] * target
-
-        loss = criterion(predictions, target)
-        loss.backward()
-
+        target_values, _ = torch.max(target, dim = 1)
+        target_values = batches['reward'] + config['gamma'] * target_values
+        loss = criterion(predictions, target_values)
         losses.append(loss.item())
+
+        # Making food predictions and targets
+        food_mask = np.array([True if food_action is not None else False for food_action in batches["food_action"]])
+        if food_mask.sum() > 1:
+            food_encodings = batches["state_encoding"][food_mask]
+            food_actions = np.array(batches["food_action"])[food_mask].astype(np.int32)
+            food_rewards = torch.tensor(np.array(batches["food_reward"]).astype(np.float32)[food_mask], dtype = torch.float).to(training_device)
+            actions = batches["action"][food_mask]
+            food_target = target[food_mask]
+
+            food_name_list = [idx2food[idx - action_beginning_index[action2index["buy_food"]]] for idx in actions]
+            food_encodings = policy_net.add_food_index_to_encoding(food_encodings, food_name_list)
+            _, food_predictions = policy_net(food_encodings, return_food_actions = True)
+            food_predictions = food_predictions[torch.arange(food_predictions.size(0)), food_actions]
+
+            food_target_values, _ = torch.max(food_target, dim = 1)
+            #food_target_values = food_rewards + config['gamma'] * food_target_values
+            food_target_values = config['gamma'] * food_target_values # Error correction with always 0 food
+            
+            
+            # For the normal prediction
+            curr_loss = criterion(food_predictions, food_target_values)
+            food_losses.append(curr_loss.item())
+            loss += curr_loss
+
+            number_food_updates_in_last_300 += 1
+
+        loss.backward()
         optimizer.step()
 
         del loss
 
         if update_number % 300 == 0:
             average_loss_past = np.mean(losses[-300:])
-            print(f"Step {update_number:04d}: Loss {average_loss_past}")
+            average_food_loss_past = np.mean(food_losses[-number_food_updates_in_last_300:])
+            total_average_loss = average_loss_past + average_food_loss_past
+            print(f"Step {update_number:04d}: Total Loss {total_average_loss}, Normal Loss: {average_loss_past}, Average Food Loss: {average_food_loss_past}")
+
+            number_food_updates_in_last_300 = 0
 
     return policy_net, np.mean(losses)
 
@@ -381,7 +441,8 @@ def train():
     if USE_WANDB:
         wandb_id = wandb.util.generate_id()
         run_name = "run_" + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
-        wandb.init(resume = "must", id = "y9ekd6cz")
+        #wandb.init(resume = "must", id = "ysxidhkr")
+        wandb.init(project = "sap-god-bot", name = "Pretrain Food, Freeze Penalty, Food Fix", id = wandb_id)
         wandb.config.update(config, allow_val_change = True)
         print("WandB ID: ", wandb_id)
 
@@ -399,13 +460,15 @@ def train():
     epsilon_decay = config["epsilon_decay"]
 
     # Loading runs
-    train_mode = "continue" # "pretrained", "scratch", "continue", "none"
-    train_path = "model_test_102.pt"
+    train_mode = "none" # "pretrained", "scratch", "continue", "none"
+    train_path = "model_test_156.pt"
 
     if train_mode == "continue":
         loaded_values = torch.load(train_path)
-        policy_net.load_state_dict(loaded_values["policy_model"])
-        target_net.load_state_dict(loaded_values["target_model"])
+        if "policy_model" in loaded_values:
+            policy_net.load_state_dict(loaded_values["policy_model"])
+        if "target_model" in loaded_values:
+            target_net.load_state_dict(loaded_values["target_model"])
 
         starting_epoch = loaded_values["epoch"]
         epsilon = loaded_values["epsilon"]
@@ -423,12 +486,18 @@ def train():
         policy_net.load_state_dict(loaded_model)
         target_net.load_state_dict(loaded_model)
 
+    # Delete "food_placed.txt" and "teams.txt" if they exist
+    if os.path.exists("food_placed.txt"):
+        os.remove("food_placed.txt")
+    if os.path.exists("teams.txt"):
+        os.remove("teams.txt")
+
     if USE_WANDB:
         wandb.watch(policy_net)
 
-    #eval_results, actions_used, past_team_win_percentages, pets_bought, food_bought = evaluate_model(policy_net, greedy_pt_organizer, config = config, epoch = 2)
     #eval_results, actions_used = evaluate_model(policy_net, config, epoch = 0)
     #visualize_rollout(policy_net, config)
+    #eval_results, actions_used, past_team_win_percentages, pets_bought, food_bought = evaluate_model(policy_net, greedy_pt_organizer, config = config, epoch = 2)
 
     for epoch in range(starting_epoch, config["epochs"] + 1):
         print("Epoch: ", epoch)
@@ -447,7 +516,7 @@ def train():
         start_time = time.time()
         eval_results, actions_used, past_team_win_percentages, pets_bought, food_bought = evaluate_model(policy_net, greedy_pt_organizer, config = config, epoch = epoch)
         print(eval_results)
-        print(actions_used)
+        print({k : sum(v) for k, v in actions_used.items()})
         evaluate_elapsed_time = time.time() - start_time
         print(f"Elapsed time: {evaluate_elapsed_time} seconds")
 
@@ -499,7 +568,6 @@ def train():
                 "avg_win_percentage_per_round": past_team_win_percentages,
                 "sum_pigs_defeated": np.sum(eval_results),
                 "max_pigs_defeated": np.max(eval_results),
-                "actions_used": actions_used,
                 "experience_replay_length": len(experience_replay),
                 "experience_replay_time_taken": er_elapsed_time,
                 "evaluate_time_taken": evaluate_elapsed_time,
@@ -510,10 +578,16 @@ def train():
             wandb_logging_dict["pigs_defeated_by_round"] = pig_defeated_dict
 
             # Adding pets and food bought dictionaries
-            wandb_logging_dict["pets_bought"] = pets_bought
-            wandb_logging_dict["food_bought"] = food_bought
+            wandb_logging_dict["actions_used"] = {k : sum(v) for k, v in actions_used.items()}
+            wandb_logging_dict["pets_bought"] = {k : sum(v) for k, v in pets_bought.items()}
+            wandb_logging_dict["food_bought"] = {k : sum(v) for k, v in food_bought.items()}
 
             wandb.log(wandb_logging_dict)
+
+            # Tables
+            wandb.log({"pets_bought_table": wandb.Table(dataframe = pd.DataFrame(pets_bought))})
+            wandb.log({"food_bought_table": wandb.Table(dataframe = pd.DataFrame(food_bought))})
+            wandb.log({"actions_used_table": wandb.Table(dataframe = pd.DataFrame(actions_used))})
 
 if __name__ == "__main__":
     print(f"Cuda available: {torch.cuda.is_available()}", flush = True)

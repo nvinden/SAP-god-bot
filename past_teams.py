@@ -40,7 +40,7 @@ class PastTeamsOrganizer():
         auto_order_team(temp_player)
         player_team = temp_player.team
 
-        num_battles = min(num_battles, len(self.active_past_teams[turn_number]))
+        num_battles = min(min(num_battles, len(self.active_past_teams[turn_number])), 50)
 
         wins = 0
         draws = 0
