@@ -110,6 +110,9 @@ class Pet:
     def set_health(self, value):
         self._health = value
 
+    def set_level(self, value):
+        self.level = value
+
     def get_damage(self, value):
         return status.apply_damage_dict[self.status](value)
 

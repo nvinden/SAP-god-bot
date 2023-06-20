@@ -1,6 +1,6 @@
 VERBOSE = False
 N_ACTIONS = 383
-USE_WANDB = True
+USE_WANDB = False
 
 rollout_device = "cuda"
 training_device = "cuda"
@@ -8,36 +8,37 @@ training_device = "cuda"
 DEFAULT_CONFIGURATION = {
     # Model parameters
     "d_model": 316,
-    "nhead": 8,
-    "num_layers": 5,
+    "nhead": 3,#3,
+    "num_layers": 2, #2,
 
     # Rollout parameters
     "players_per_simulation": 30,
     "action_limit": 15, # Number of actions a player can do in a turn before they get skipped
     "number_of_battles_per_player_turn": 5,
-    "number_of_battles_per_simulation": 17,
-    "max_num_threads": 6, #12,
+    "number_of_battles_per_simulation": 15,
+    "max_num_threads": 16, #12,
 
     # Evaluation parameters
     "number_of_evaluation_turns": 15,
 
     # Random action parameters
-    "epsilon": 0.95,
-    "epsilon_decay": 0.99,
-    "epsilon_min": 0.075,
+    "epsilon": 0.20,
+    "epsilon_decay": 1.00,
+    "epsilon_min": 0.15,
 
     # Training parameters
     "epochs": 300,
-    "batch_size": 128,
+    "batch_size": 64,
     "num_updates_per_sample": 8.0,
-    "gamma": 0.985,
-    "learning_rate": 0.00007,
+    "gamma": 0.99,
+    "learning_rate": 0.0000045, #Original tested value 0.00007
+    "learning_rate_decay": 1.00,
     "win_percentage_threshold_past_teams": 0.55,
     "freeze_transformer_epochs": 5, 
 
     # Action Illegalization parameters
     "illegalize_rolling": (0, 0),
-    "illegalize_freeze_unfreeze": (0, 25),
+    "illegalize_freeze_unfreeze": (0, 500),
     "illegalize_combine": (0, 0),
 
     # Reward parameters
@@ -45,14 +46,22 @@ DEFAULT_CONFIGURATION = {
     "allow_stat_increase_as_reward": False,
     "allow_combine_reward": False,
     "allow_penalty_for_unused_gold": True,
-    "allow_multi_freeze_unfreeze_penalty": True
+    "allow_multi_freeze_unfreeze_penalty": True,
+
+    # Pretrain Transformer parameters
+    "pretrain_transformer": True,
+    "full_part_combo_split": [0.10, 0.70, 0.20],
+    "partial_number_of_actions": 55,
+    "pretrain_only_buy_turn_allowable_items": True,
+    "train_on_increasing_partial_actions": False,
+    "eval_mask_type": "part"
 }
 
 PRETRAIN_DEFAULT_CONFIGURATION = {
     # Model parameters
     "d_model": 316,
-    "nhead": 8,
-    "num_layers": 5,
+    "nhead": 3,
+    "num_layers": 2,
 
     # Training parameters
     "epochs": 100_000,
@@ -61,27 +70,7 @@ PRETRAIN_DEFAULT_CONFIGURATION = {
     "learning_rate": 0.0001,
 
     # Players
-    "number_of_players": 32
-}
+    "number_of_players": 32,
 
-REORDER_DEFAULT_CONFIGURATION = {
-    # Model parameters
-    "d_model": 216,
-    "nhead": 3,
-    "num_encoder_layers": 2,
-    "num_decoder_layers": 2,
-    "dim_feedforward": 216,
-
-    # Rollout parameters
-    "action_limit": 15, # Number of actions a player can do in a turn before they get skipped
-    "number_of_rollout_turns": 15,
-    "max_num_threads": 24,
-    "number_of_players": 50,
-
-    # Training parameters
-    "random_to_rollout_ratio": 2.0,
-    "epochs": 100,
-    "batch_size": 32,
-    "num_updates_per_sample": 16,
-    "learning_rate": 0.0001,
+    "pretrain_transformer": True
 }

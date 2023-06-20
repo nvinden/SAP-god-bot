@@ -13,7 +13,7 @@ from sapai.shop import Shop
 from sapai.teams import Team
 from sapai.player import Player, GoldException, WrongObjectException, FullTeamException
 from sapai.data import data as ALL_DATA
-from config import rollout_device, training_device
+from config import rollout_device, training_device, N_ACTIONS
 
 import numpy as np
 
@@ -197,30 +197,53 @@ def roll(shop : Shop) -> None:
 # Buys a pet from the shop, adds it to the players band
 # TODO instead translate the pet idx not from shop indexes, but to the
 # indexes of the PETS in the shop
-def buy_pet(player : Player, pet_idx : int) -> str:
+def buy_pet(player : Player, pet_idx : int, best_sell_idx : int = None) -> str:
     assert pet_idx >= 0 and pet_idx < 6
+
+    sell_return_index = None
 
     number_pets = len(player.shop.pets)
     #number_food = len(player.shop.foods)
 
     if pet_idx >= number_pets:
-        return "invalid_idx"
+        return "invalid_idx", sell_return_index
 
     try:
         player.buy_pet(pet_idx)
-        return "success"
+        return "success", sell_return_index
     except GoldException as e:
-        return "not_enough_gold"
+        return "not_enough_gold", sell_return_index
     except FullTeamException as e:
         # Try to buy upgrade if there is no spaagent_actions_listce
         #print(player.shop, player.team, "gold:", player.gold, "\n")
         for team_idx in range(5):
             try:
                 player.buy_combine(pet_idx, team_idx)
-                return "success"
+                return "success", sell_return_index
             except Exception as e:
                 continue 
-        return "not_enough_space"
+
+        # Buy selling because there is no available space
+        if best_sell_idx is not None:
+            pet_to_sell = idx2pet[best_sell_idx]
+            return_pet_val = [i for i, slot in enumerate(player.team.slots) if slot.pet.name == pet_to_sell]
+
+            # If food selection is an effect, prioritize pets that are not already affected by an effect
+            if len(return_pet_val) == 1:
+                sell_idx = return_pet_val[0]
+            else:
+                pet_priority = [sell_priority_for_same_pet(player.team.slots[pet_idx].pet, pet_to_sell) for pet_idx in return_pet_val]
+                pet_index = np.argmax(pet_priority)
+                sell_idx = return_pet_val[pet_index]
+
+            player.sell(sell_idx)
+            player.buy_pet(pet_idx)
+
+            sell_return_index = sell_idx
+
+            return "success", sell_return_index
+
+        return "not_enough_space", sell_return_index
 
 def sell(player : Player, pet_idx : int) -> str:
     assert pet_idx >= 0 and pet_idx < 5
@@ -268,7 +291,7 @@ def combine(player : Player, pet_idx : int) -> str:
     for combine_pet_idx in player.team.filled:
         if pet_idx == combine_pet_idx:
             continue
-        if player.team.slots[combine_pet_idx].pet.name == pet_species:
+        if player.team.slots[combine_pet_idx].pet.name == pet_species and player.team.slots[combine_pet_idx].pet.level < 3:
             try:
                 player.combine(pet_idx, combine_pet_idx)
                 success = True
@@ -328,14 +351,18 @@ def end_turn(player : Player) -> str:
 # Model Functions #
 ###################
 
-def call_action_from_q_index(player : Player, q_idx : int, food_net = None, epsilon: float = None) -> str:
+def call_action_from_q_index(player : Player, q_idx : int, food_best_move : int = None, sell_best_move : int = None, epsilon: float = None, config : dict = None) -> str:
     # This code is gross, but it just defines the ranges the actions take
     if not isinstance(q_idx, int):
         q_idx = int(q_idx)
 
-    return_food_index = True if food_net is not None else False
+    return_food_index = True if food_best_move is not None else False
     food_return_index = None
-    selected_pet = None
+    
+    return_sell_index = True if sell_best_move is not None else False
+    sell_return_index = None
+
+    pretrain = (config is not None) and ("pretrain_transformer" in config) and config["pretrain_transformer"]
 
     assert q_idx >= 0 and q_idx < action_ranges[-1]
 
@@ -346,14 +373,21 @@ def call_action_from_q_index(player : Player, q_idx : int, food_net = None, epsi
         #print("Buying pet")
         pet_list_index = q_idx - action_ranges[0]
         pet_to_buy = idx2pet[pet_list_index]
-        pet_shop_list = [pet.name for pet in player.shop.pets if pet.name != "pet-none"]
-        
-        if pet_to_buy not in pet_shop_list:
-            ret_val = "invalid_idx"
+        if pretrain:
+            new_shop_slots = Shop([pet_to_buy.replace("pet-", "")], turn = player.turn, shop_attack=player.shop.shop_attack, shop_health=player.shop.shop_health).slots
+            old_shop_slots = player.shop.slots
+            player.shop.slots = new_shop_slots
+            ret_val, sell_return_index = buy_pet(player, 0, best_sell_idx=sell_best_move)
+            player.shop.slots = old_shop_slots
         else:
-            buy_idx = pet_shop_list.index(pet_to_buy)
+            pet_shop_list = [pet.name for pet in player.shop.pets if pet.name != "pet-none"]
+            
+            if pet_to_buy not in pet_shop_list:
+                ret_val = "invalid_idx"
+            else:
+                buy_idx = pet_shop_list.index(pet_to_buy)
 
-            ret_val = buy_pet(player, buy_idx)
+                ret_val, sell_return_index = buy_pet(player, buy_idx, best_sell_idx=sell_best_move)
     elif q_idx >= action_ranges[1] and q_idx < action_ranges[2]: # Sell pet
         #print("Selling pet")
         pet_list_index = q_idx - action_ranges[1]
@@ -362,23 +396,44 @@ def call_action_from_q_index(player : Player, q_idx : int, food_net = None, epsi
 
         if pet_to_sell not in pet_team_list:
             ret_val = "invalid_idx"
-        else:        
-            sell_idx = pet_team_list.index(pet_to_sell)
+        else:
+            index_total_stats = {i : player.team.slots[i].pet.health + player.team.slots[i].pet.attack for i in range(len(player.team.slots)) if player.team.slots[i].pet.name == pet_to_sell}
+            sell_idx = -1
+            for i in range(len(player.team.slots)):
+                if player.team.slots[i].pet.name == pet_to_sell:
+                    if sell_idx == -1:
+                        sell_idx = i
+                    elif index_total_stats[i] < index_total_stats[sell_idx]:
+                        sell_idx = i
 
             ret_val = sell(player, sell_idx)
     elif q_idx >= action_ranges[2] and q_idx < action_ranges[3]: # Buy food
         #print("Buying food")
         food_list_index = q_idx - action_ranges[2]
         food_to_buy = idx2food[food_list_index]
-        food_shop_list = [food.name for food in player.shop.foods if food.name != "food-none"]
+        if pretrain:
+            if player.team.filled == []:
+                ret_val = "invalid_idx"
+            else:
+                new_shop_slots = Shop([food_to_buy.replace("food-", "")], turn = player.turn, shop_attack=player.shop.shop_attack, shop_health=player.shop.shop_health).slots
+                old_shop_slots = player.shop.slots
+                player.shop.slots = new_shop_slots
 
-        if food_to_buy not in food_shop_list or player.team.filled == []:
-            ret_val = "invalid_idx"
+                food_return_index, _ = auto_assign_food_to_pet(food_to_buy, player, food_move = food_best_move, epsilon = epsilon)
+
+                ret_val = buy_food(player, 0, food_return_index)
+
+                player.shop.slots = old_shop_slots
         else:
-            food_buy_idx = food_shop_list.index(food_to_buy)
-            food_return_index, selected_pet = auto_assign_food_to_pet(food_to_buy, player, food_net = food_net, epsilon = epsilon)
+            food_shop_list = [food.name for food in player.shop.foods if food.name != "food-none"]
 
-            ret_val = buy_food(player, food_buy_idx, food_return_index)
+            if food_to_buy not in food_shop_list or player.team.filled == []:
+                ret_val = "invalid_idx"
+            else:
+                food_buy_idx = food_shop_list.index(food_to_buy)
+                food_return_index, _ = auto_assign_food_to_pet(food_to_buy, player, food_move = food_best_move, epsilon = epsilon)
+
+                ret_val = buy_food(player, food_buy_idx, food_return_index)
     elif q_idx >= action_ranges[3] and q_idx < action_ranges[4]: # Combine
         #print("Combining")
         pet_list_index = q_idx - action_ranges[3]
@@ -388,8 +443,17 @@ def call_action_from_q_index(player : Player, q_idx : int, food_net = None, epsi
         if pet_team_list.count(pet_to_combine) < 2:
             ret_val = "invalid_idx"
         else:
-            combine_idx = pet_team_list.index(pet_to_combine)
-            ret_val = combine(player, combine_idx)
+            combine_idx = -1
+            for i, slot in enumerate(player.team.slots):
+                if slot.obj.name == pet_to_combine and slot.obj.level < 3:
+                    combine_idx = i
+                    break
+
+            if combine_idx == -1:
+                ret_val = "invalid_idx"
+            else:
+                ret_val = combine(player, combine_idx)
+                
     elif q_idx >= action_ranges[4] and q_idx < action_ranges[5]: # Freeze
         #print("Freezing")
         freezable_index = q_idx - action_ranges[4]
@@ -426,7 +490,9 @@ def call_action_from_q_index(player : Player, q_idx : int, food_net = None, epsi
     #    player.gold += 1
     #    player.roll()
 
-    if return_food_index: return ret_val, food_return_index, selected_pet
+    if return_food_index and return_sell_index: return ret_val, food_return_index, sell_return_index
+    elif return_food_index: return ret_val, food_return_index
+    elif return_sell_index: return ret_val, sell_return_index
     else: return ret_val
 
 def auto_order_team(player, return_order_indexes = False, return_team = True) -> Player:
@@ -457,32 +523,64 @@ food_types = {
     "level_up": {"food-chocolate"}
 }
 
-def auto_assign_food_to_pet(food : str, player : Player, food_net = None, epsilon : float = 1.0) -> Player:
+def sell_priority_for_same_pet(pet, pet_name : str):
+    sell_priority = 0
+    sell_priority -= pet.attack
+    sell_priority -= pet.health
+    return sell_priority
+
+def food_priority_for_same_pet(pet, food : str):
+    food_priority = 0
+
+    if food in food_types["single_target_stat_up"]:
+        if pet.attack >= 50:
+            food_priority -= 1000
+        if pet.health >= 50:
+            food_priority -= 1000
+    elif food in food_types["multi_target_stat_up"]:
+        if pet.attack >= 50:
+            food_priority -= 1000
+        if pet.health >= 50:
+            food_priority -= 1000
+    elif food in food_types["effect"]:
+        if pet.status != "none":
+            food_priority -= 1000
+    elif food in food_types["death_causes"]:
+        food_priority += (pet.level - 1) * 100
+        food_priority += (50 - pet.health)
+        food_priority += (50 - pet.attack)
+    elif food in food_types["level_up"]:
+        if pet.level >= 3:
+            food_priority -= 10000
+        else:
+            food_priority += (pet.tier - 1) * 100
+
+    food_priority = food_priority + (min(pet.attack, 50) + min(pet.health, 50))
+    return food_priority
+
+def auto_assign_food_to_pet(food : str, player : Player, food_move = None, epsilon : float = 1.0) -> Player:
     # Use food_net to determine which pet to assign food to
-    if food_net is not None:
+    if food_move is not None:
         if len(player.team.filled) == 0:
             return None
         
         random_val = random.uniform(0, 1)
 
-        if random_val > epsilon or epsilon is None: # Choose random action
-            encoding = food_net.state_to_encoding(player, food_selected_name = food)
-            _, q_actions = food_net(encoding, return_food_actions = True)
-            q_actions = q_actions.squeeze(0)
-
-            pet_names = [slot.pet.name for slot in player.team.slots]
-            illegal_indexes = [i for i in range(len(pet2idx)) if idx2pet[i] not in pet_names]
-            q_actions[np.array(illegal_indexes)] = -1e9
-
-            type_of_animal_chosen_idx = torch.argmax(q_actions).item()
-            type_of_animal_chosen = idx2pet[type_of_animal_chosen_idx]
+        if random_val > epsilon or epsilon is None: # Choose based on best move
+            type_of_animal_chosen = idx2pet[food_move]
 
             return_pet_val = [i for i, slot in enumerate(player.team.slots) if slot.pet.name == type_of_animal_chosen]
-            return_pet_val = random.sample(return_pet_val, 1)[0]
 
-            return return_pet_val, type_of_animal_chosen
+            # If food selection is an effect, prioritize pets that are not already affected by an effect
+            if len(return_pet_val) == 1:
+                return return_pet_val[0], type_of_animal_chosen
+            else:
+                pet_priority = [food_priority_for_same_pet(player.team.slots[pet_idx].pet, food) for pet_idx in return_pet_val]
+                pet_index = np.argmax(pet_priority)
+                return_pet_val = return_pet_val[pet_index]
+                return return_pet_val, type_of_animal_chosen
 
-        else: # Choose action based on food_net
+        else: # Choose randomly
             legal_indexes = [i for i, slot in enumerate(player.team.slots) if slot.pet.name != "pet-none"]
             random_pet = random.sample(legal_indexes, 1)[0]
             return random_pet, player.team.slots[random_pet].pet.name
@@ -544,8 +642,6 @@ def _get_highest_stat_pet(player : Player, list : str) -> int:
 
     return highest_stats_index
 
-    
-
 def action_index_to_action_type(action_number : int) -> str:
     for i in range(len(agent_actions_list) - 1):
         if action_number >= action_beginning_index[i] and action_number < action_beginning_index[i + 1]:
@@ -605,7 +701,7 @@ def min_empty_zero(list_ : list) -> int:
     if len(list_) == 0: return 3
     else: return min(list_)
 
-def create_available_action_mask(player : Player) -> np.ndarray:
+def create_available_action_mask(player : Player, return_food_mask : bool = False, return_sell_mask : bool = False) -> np.ndarray:
     action_mask = np.zeros(shape = (action_beginning_index[-1] + 1), dtype = np.uint8)
 
     pet_levels = defaultdict(list)
@@ -621,7 +717,7 @@ def create_available_action_mask(player : Player) -> np.ndarray:
         action_mask[action_beginning_index[action2index["roll"]]] = 1
 
     # 3) Buy pet legality
-    purchasable_pets = [slot.obj.name for slot in player.shop.slots if slot.slot_type in ["pet", "levelup"] and slot.cost <= player.gold and (min_empty_zero(pet_levels[slot.obj.name]) < 3 or len(player.team.filled) < 5)]
+    purchasable_pets = [slot.obj.name for slot in player.shop.slots if slot.slot_type in ["pet", "levelup"] and slot.cost <= player.gold]
     for pet in purchasable_pets:
         action_idx = action_beginning_index[action2index["buy_pet"]] + pet2idx[pet]
         action_mask[action_idx] = 1
@@ -639,7 +735,8 @@ def create_available_action_mask(player : Player) -> np.ndarray:
         action_mask[action_idx] = 1
 
     # 6) Combine legality
-    combinable_pets = [slot.obj.name for slot in player.team.slots if slot.pet.name != "pet-none" and slot.pet.level < 3 and len(pet_levels[slot.pet.name]) > 1]
+    pet_levels_less_than_3 = {pet : [level for level in levels if level < 3] for pet, levels in pet_levels.items()}
+    combinable_pets = [slot.obj.name for slot in player.team.slots if slot.pet.name != "pet-none" and slot.pet.level < 3 and len(pet_levels_less_than_3[slot.pet.name]) > 1]
     for pet in combinable_pets:
         action_idx = action_beginning_index[action2index["combine"]] + pet2idx[pet]
         action_mask[action_idx] = 1
@@ -661,5 +758,146 @@ def create_available_action_mask(player : Player) -> np.ndarray:
         else: continue
         action_idx = action_beginning_index[action2index["unfreeze"]] + item_idx
         action_mask[action_idx] = 1
+
+    if return_food_mask or return_sell_mask:
+        food_sell_mask = np.array([1 if pet in sellable_pets else 0 for i, pet in enumerate(pet2idx.keys())])
+
+        if return_food_mask and return_sell_mask: return action_mask, deepcopy(food_sell_mask), deepcopy(food_sell_mask)
+        else: return action_mask, deepcopy(food_sell_mask)
+
+    return action_mask
+
+buyable_pets = [pet for pet in pet2idx.keys() if pet not in ["pet-none", "pet-zombie-cricket", "pet-bus", "pet-zombie-fly", "pet-dirty-rat", "pet-chick", "pet-ram", "pet-bee"]]
+buyable_foods = [food for food in food2idx.keys() if food not in ["food-milk"]]
+buyable_items = buyable_pets + buyable_foods
+
+combo_suites = {
+    "dragon": ["pet-ant", "pet-beaver", "pet-cricket", "pet-duck", "pet-fish", "pet-horse", "pet-mosquito", "pet-otter", "pet-pig", "pet-dragon", "pet-gorilla", "pet-leopard", 
+                "pet-rhino", "food-chocolate", "food-melon", "food-garlic"],
+    "foody": ["pet-fish", "pet-rabbit", "pet-worm", "pet-squirrel", "pet-cow", "pet-seal", "pet-cat"] + buyable_foods,
+    "penguin": ["pet-penguin"] +  random.sample(buyable_pets, k = 10) + ["pet-duck", "food-chocolate"],
+    "spawners": ["pet-cricket", "food-honey", "pet-spider", "pet-sheep", "pet-deer", "pet-rooster", "pet-shark", "pet-turkey", "pet-fly", "pet-snake"] + buyable_foods,
+}
+
+pets_by_level = {}
+foods_by_level = {}
+items_by_level = {}
+for level in range(1, 7):
+    current_level_mask_pets = [item for item in pet2idx.keys() if isinstance(ALL_DATA["pets"][item]["tier"], int) and (ALL_DATA["pets"][item]["tier"] == level)]
+    current_level_mask_food = [item for item in food2idx.keys() if isinstance(ALL_DATA["foods"][item]["tier"], int) and (ALL_DATA["foods"][item]["tier"] == level)]
+    
+    pets_by_level[level] = current_level_mask_pets
+    foods_by_level[level] = current_level_mask_food
+    items_by_level[level] = current_level_mask_pets + current_level_mask_food
+
+# Available pet stuff
+def create_available_item_mask(players : Player, config : dict, predefined_selections : list = None, epoch = None) -> np.ndarray:
+    pet_mask_types = ["full", "part", "combo"]
+
+    if isinstance(players, Player): players = [players]
+
+    if predefined_selections is None:
+        predefined_selections = [None for _ in range(len(players))]
+    else:
+        assert len(predefined_selections) == len(players)
+        for selection in predefined_selections:
+            assert selection in pet_mask_types
+
+    mask = np.zeros(shape = (len(players), len(idx2pet) + len(idx2food)), dtype = np.int32)
+    item2idx, idx2item = get_idx_item_dicts()
+
+    for player_num, selection_type in zip(range(len(players)), predefined_selections):
+        if selection_type is None:
+            selection_type = random.choices(pet_mask_types, weights = config["full_part_combo_split"])[0]
+
+        if selection_type == "full":
+            random_selection = np.array([item2idx[item] for item in buyable_items])
+            mask[player_num, random_selection] = 1
+
+        elif selection_type == "part":
+            if config["train_on_increasing_partial_actions"] and epoch is not None:
+                number_to_select = min(epoch, len(buyable_items))
+            else:
+                number_to_select = config["partial_number_of_actions"]
+
+            all_level_selection = []
+            for level in range(1, 7):
+                all_level_selection = all_level_selection + random.sample(pets_by_level[level], k = 1)
+                all_level_selection = all_level_selection + random.sample(foods_by_level[level], k = 1)
+
+            random_selection = random.sample(buyable_items, k = number_to_select)
+            random_selection += all_level_selection
+
+            random_selection = np.array([item2idx[item] for item in random_selection])
+            mask[player_num, random_selection] = 1
+        elif selection_type == "combo":
+            combo_type = random.sample(list(combo_suites.keys()), k = 1)[0]
+            random_selection = np.array([item2idx[item] for item in combo_suites[combo_type]])
+            mask[player_num, random_selection] = 1
+        else:
+            raise ValueError("Invalid selection type")
+
+    return mask
+
+def get_idx_item_dicts():
+    item2idx = list(idx2pet.values()) + list(idx2food.values())
+    item2idx = {item : idx for idx, item in enumerate(item2idx)}
+    idx2item = {idx : item for item, idx in item2idx.items()}
+    return item2idx, idx2item
+
+def get_best_legal_move(player : Player, net, config : dict, epoch = 20, epoch_masking = True, mask = None, return_q_values = False, pretrain_mask = None) -> int:
+    state_encodings = net.state_to_encoding(player)
+
+    if config["pretrain_transformer"]:
+        available_action_mask = create_available_item_mask(1, config, predefined_selections = ["full"])
+        state_encodings = net.modify_encodings_pretrain(state_encodings, available_action_mask, config = config)
+
+    q_value = net(state_encodings)
+    q_value = q_value.squeeze(0)
+
+    if mask is None:
+        action_mask = create_available_action_mask(player)
+
+        # if epoch makes turns illegal
+        if epoch_masking:
+            epoch_illegal_mask = create_epoch_illegal_mask(epoch, config)
+            action_mask = action_mask * epoch_illegal_mask
+        
+        if config["pretrain_transformer"]:
+            if pretrain_mask is None: available_action_mask = create_available_item_mask(1, config, predefined_selections = ["full"])
+            else: available_action_mask = pretrain_mask
+
+            available_action_mask = np.squeeze(available_action_mask)
+
+            if player.gold >= 3:
+                action_mask[action_beginning_index[action2index["buy_pet"]]:action_beginning_index[action2index["buy_pet"] + 1]] = available_action_mask[:len(pet2idx)]
+            # buy food actions
+            if len(player.team.filled) != 0 and player.gold >= 3:
+                action_mask[action_beginning_index[action2index["buy_food"]]:action_beginning_index[action2index["buy_food"] + 1]] = available_action_mask[len(pet2idx):]
+
+        max_q_action_mask = np.stack(deepcopy(action_mask))
+        max_q_action_mask = torch.tensor(max_q_action_mask, dtype = torch.int32, device = rollout_device).requires_grad_(False)
+    else:
+        max_q_action_mask = torch.tensor(mask.astype(np.int32), dtype = torch.int32, device = rollout_device).requires_grad_(False)
+
+    # Adding mask to the max q action vector
+    where_zeros = max_q_action_mask < 0.5
+    q_value[where_zeros] = -9999999
+
+    action_taken = int(torch.argmax(q_value).cpu().numpy())
+
+    if return_q_values:
+        return action_taken, q_value
+    return action_taken
+
+def create_epoch_illegal_mask(epoch, config):
+    action_mask = np.ones(N_ACTIONS, dtype = np.uint8)
+    if "illegalize_rolling" in config and (epoch >= config["illegalize_rolling"][0] and epoch <= config["illegalize_rolling"][1]):
+        action_mask[action_beginning_index[action2index["roll"]]:action_beginning_index[action2index["roll"] + 1]] = 0
+    if "illegalize_freeze_unfreeze" in config and (epoch >= config["illegalize_freeze_unfreeze"][0] and epoch <= config["illegalize_freeze_unfreeze"][1]):
+        action_mask[action_beginning_index[action2index["freeze"]]:action_beginning_index[action2index["freeze"] + 1]] = 0
+        action_mask[action_beginning_index[action2index["unfreeze"]]:action_beginning_index[action2index["unfreeze"] + 1]] = 0
+    if "illegalize_combine" in config and (epoch >= config["illegalize_combine"][0] and epoch <= config["illegalize_combine"][1]):
+        action_mask[action_beginning_index[action2index["combine"]]:action_beginning_index[action2index["combine"] + 1]] = 0
 
     return action_mask

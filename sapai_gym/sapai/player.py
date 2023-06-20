@@ -488,6 +488,11 @@ class Player:
             raise Exception(
                 f"Attempted to buy Pet of cost {cost} with only {self.gold} gold"
             )
+        
+        if team_pet.level >= 3:
+            raise Exception(
+                f"Attempted to combine Pet of level {team_pet.level}"
+            )
 
         ### Make all updates
         self.gold -= cost

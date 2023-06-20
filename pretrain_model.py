@@ -1,6 +1,6 @@
 from config import PRETRAIN_DEFAULT_CONFIGURATION
 from model import SAPAI
-from model_actions import pet2idx, idx2pet, food2idx, idx2food, auto_assign_food_to_pet
+from model_actions import pet2idx, idx2pet, food2idx, idx2food, auto_assign_food_to_pet, action_beginning_index, action2index
 
 from copy import deepcopy
 import random
@@ -12,13 +12,15 @@ from sapai.teams import Team
 from sapai.player import Player
 from sapai.battle import Battle
 from sapai.foods import Food
+from sapai.shop import Shop
+from sapai.data import data
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-IN_FEATURES = 4800
+IN_FEATURES = 4770
 
 # 1) NoP: Number of Pets
 def NoP_net(config):
@@ -213,7 +215,31 @@ def evaluate_pretrained_model(model, out_nets, pretraining_actions):
 
         print()
 
-        
+def auto_sell_pet(player : Player):
+    pet_values = [0] * 5
+
+    for idx, pet in enumerate(player.team):
+        pet = pet.pet
+        player_value = 0
+
+        if isinstance(pet.tier, int): 
+            player_value += (6 - pet.tier) * 4
+        else:
+            player_value += 6 * 4
+
+        health_above_normal = pet.health - (data["pets"][pet.name]["baseHealth"])
+        attack_above_normal = pet.attack - (data["pets"][pet.name]["baseAttack"])
+
+        player_value -= health_above_normal
+        player_value -= attack_above_normal
+
+        pet_values[idx] = player_value
+
+    max_priority = np.argmax(pet_values)
+    max_priority_name = player.team.slots[max_priority].pet.name
+
+    return max_priority_name
+
 
 def pretrain_model():
     config = PRETRAIN_DEFAULT_CONFIGURATION
@@ -238,7 +264,7 @@ def pretrain_model():
     out_nets = [action_net(config) for _, action_net, _, _ in pretraining_actions]
 
     # Load model
-    model_file = None#"pretrained_model_13000.pth"
+    model_file = "pretrained_model_30000.pth"
     if model_file is not None:
         checkpoint = torch.load(model_file)
         model.load_state_dict(checkpoint["model"])
@@ -289,16 +315,23 @@ def pretrain_model():
         # Pretraining food heuristic
         players_with_pets_mask = [len(player.team.filled) > 0 for player in player_list]
         players_with_pets = np.array(player_list)[players_with_pets_mask]
-        players_with_pets_encodings = player_encodings[players_with_pets_mask]
         if len(players_with_pets) != 0:
             optim.zero_grad()
             food_chosen_per_player = [random.choice(food_list) for _ in range(players_with_pets.shape[0])]
             ground_truth = [auto_assign_food_to_pet(food, player) for player, food in zip(players_with_pets, food_chosen_per_player)]
             ground_truth = [pet2idx[pet_val[1]] for pet_val in ground_truth]
-            player_encodings_out = model.add_food_index_to_encoding(players_with_pets_encodings, food_chosen_per_player)
-            _, food_prediction = model.forward(player_encodings_out, return_food_actions=True)
+
+            for i, player in enumerate(players_with_pets):
+                food = food_chosen_per_player[i].replace("food-", "")
+                player.shop = Shop([food, food])
+
+            players_with_pets_encodings = model.state_to_encoding(players_with_pets)
+
+            masks = model.get_masked_q_values(players_with_pets, return_masks = True)
+            _, food_prediction = model.forward(players_with_pets_encodings, return_food_actions=True, action_mask = masks["all"])
 
             food_heuristic_loss = F.cross_entropy(food_prediction, torch.tensor(ground_truth, device = "cuda" if torch.cuda.is_available() else "cpu"))
+
             food_heuristic_loss.backward()
             optim.step()
 
@@ -321,7 +354,7 @@ def pretrain_model():
 
             loss_history = defaultdict(list)
             
-        if epoch % 1000 == 0:
+        if epoch % 3000 == 0:
             # Save model
             torch.save({
                 "model": model.state_dict(),
