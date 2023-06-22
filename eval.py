@@ -41,10 +41,16 @@ def evaluate_model(net : SAPAI, pt_organizer : PastTeamsOrganizer, epoch : int, 
 
     if epoch % 3 == 0:
         players = [Player() for _ in range(number_of_rollouts)]
-        pretrain_masks = create_available_item_mask(players, config, [config["eval_mask_type"]] * number_of_rollouts)
+        if config["pretrain_transformer"]:
+            pretrain_masks = create_available_item_mask(players, config, [config["eval_mask_type"]] * number_of_rollouts)
+        else:
+            pretrain_masks = None
     else:
         players = [Player() for _ in range(number_of_pigs)]
-        pretrain_masks = create_available_item_mask(players, config, [config["eval_mask_type"]] * number_of_pigs)
+        if config["pretrain_transformer"]:
+            pretrain_masks = create_available_item_mask(players, config, [config["eval_mask_type"]] * number_of_pigs)
+        else:
+            pretrain_masks = None
     results = []
 
     # Data from the evaluation
@@ -58,7 +64,7 @@ def evaluate_model(net : SAPAI, pt_organizer : PastTeamsOrganizer, epoch : int, 
     # For each turn
     for turn_number in range(config["number_of_evaluation_turns"]):
         active_players = [player for player in players]
-        active_pretrain_masks = np.array([pretrain_mask for pretrain_mask in pretrain_masks])
+        active_pretrain_masks = None if pretrain_masks is None else np.array([pretrain_mask for pretrain_mask in pretrain_masks])
         for action_number in range(max_number_of_actions):
             if len(active_players) == 0:
                 break
@@ -71,6 +77,7 @@ def evaluate_model(net : SAPAI, pt_organizer : PastTeamsOrganizer, epoch : int, 
             # For each action
             for player, action, food_best, sell_best in zip(active_players, actions_taken["all"], actions_taken["food"], actions_taken["sell"]):
                 return_food_val = None
+                return_sell_val = None
 
                 copied_player = deepcopy(player)
 
@@ -102,6 +109,7 @@ def evaluate_model(net : SAPAI, pt_organizer : PastTeamsOrganizer, epoch : int, 
 
                 if return_sell_val is not None:
                     pets_sold[idx2pet[return_sell_val]][turn_number] += 1
+                    actions_used["sell"][turn_number] += 1
 
             # Remove players that have pressed end turn
             not_ended_turns = actions_taken["all"] != (N_ACTIONS - 1)
@@ -110,10 +118,14 @@ def evaluate_model(net : SAPAI, pt_organizer : PastTeamsOrganizer, epoch : int, 
             active_players = active_players[not_ended_turns]
             active_players = active_players.tolist()
 
-            active_pretrain_masks = np.array(active_pretrain_masks)[not_ended_turns]
+            if active_pretrain_masks is not None:
+                active_pretrain_masks = np.array(active_pretrain_masks)[not_ended_turns]
 
         for player in players:
-            player.end_turn()
+            try:
+                player.end_turn()
+            except:
+                continue
 
         # Battle past players
         if epoch % 3 == 0:
@@ -154,7 +166,7 @@ def evaluate_model(net : SAPAI, pt_organizer : PastTeamsOrganizer, epoch : int, 
         f.write(food_placed_string)
     
     if USE_WANDB:
-        wandb.save(f"additional_info/teams.txt_{epoch}")
+        wandb.save(f"additional_info/teams_{epoch}.txt")
         wandb.save(f"additional_info/food_placed_{epoch}.txt")
 
     if epoch % 3 == 0:
@@ -253,23 +265,27 @@ def visualize_rollout(net: SAPAI, config : dict):
 
     while True:
         q_values, action_number = net.get_masked_q_values(player, return_best_move = True, pretrain_action_mask = pretrain_mask)
-        action_number = int(action_number)
+        action_number_main = int(action_number["all"])
 
-        ret_val, food_return_index, selected_pet = call_action_from_q_index(player, action_number, food_net = net, epsilon = -0.1, config = config)
+        ret_val, food_return_index, sell_return_index = call_action_from_q_index(player, action_number_main, food_best_move=int(action_number["food"]), sell_best_move=int(action_number["sell"]), epsilon = -0.1, config = config)
 
-        top_values = torch.topk(q_values[0], 5)
-        top_values = [f"{top_values[0][i].item():.2f} {action_idx_to_string(top_values[1][i].item())}" for i in range(5)]
+        top_values = torch.topk(q_values['all'], 5)
+        top_q = top_values[0][0].detach().cpu().numpy()
+        top_action_idx = top_values[1][0].detach().cpu().numpy()
+        top_values = [f"{float(top_q[i]):.2f} {action_idx_to_string(top_action_idx[i])}" for i in range(5)]
 
-        action_str = action_idx_to_string(action_number)
+        action_str = action_idx_to_string(action_number_main)
         print("Ret_val", ret_val)
         print("Player:", player)
         print("Action:", action_str)
         print("Top Moves:", top_values)
-        if selected_pet is not None:
-            print("Selected Pet:", selected_pet)
+        if food_return_index is not None:
+            print("Fed to Pet: ", idx2pet[food_return_index])
+        if sell_return_index is not None:
+            print("Bought Sold Pet: ", idx2pet[sell_return_index])
         print()
 
-        if action_number == (N_ACTIONS - 1):
+        if action_number_main == (N_ACTIONS - 1):
             player.end_turn()
             player.start_turn(winner = True)
             epoch += 1

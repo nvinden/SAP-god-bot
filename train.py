@@ -162,7 +162,8 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float, epoch : int, pt_
                 else:
                     next_state = player
 
-                next_state_encoding = net.state_to_encoding(next_state, action_mask = pretrain_item_action_mask[player_number])
+                next_action_mask = None if pretrain_item_action_mask is None else pretrain_item_action_mask[player_number] 
+                next_state_encoding = net.state_to_encoding(next_state, action_mask = next_action_mask)
 
                 if config["allow_stat_increase_as_reward"] and reward is not None:
                     after_action_total_stats = sum([slot.health + slot.attack for slot in player.team.slots if not slot.empty])
@@ -199,7 +200,9 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float, epoch : int, pt_
             if result_string not in ["success", "end_turn"]:
                 print("ERROR: Player {} could not end turn".format(result_string))
 
-            encoding = np.squeeze(net.state_to_encoding(player, action_mask = pretrain_item_action_mask[player_number]).cpu().numpy())
+                    
+            next_action_mask = None if pretrain_item_action_mask is None else pretrain_item_action_mask[player_number] 
+            encoding = np.squeeze(net.state_to_encoding(player, action_mask = next_action_mask).cpu().numpy())
 
             next_state = deepcopy(player)
             #next_state.start_turn()
@@ -214,7 +217,7 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float, epoch : int, pt_
                 "next_state": next_state,
                 "food_action": None,
                 "sell_action": None,
-                "player_mask": np.zeros(shape = (len(N_ACTIONS)))
+                "player_mask": np.zeros(shape = (N_ACTIONS))
             })
 
         ##########
@@ -236,10 +239,10 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float, epoch : int, pt_
 
             player_end_turn_rewards[i] /= config["number_of_battles_per_player_turn"]
             
-            if player.lives <= 0: # Adding round loss
-                player_end_turn_rewards[i] += result_string_to_rewards["game_loss"]
-            if player.wins >= 10: # Adding round win
-                player_end_turn_rewards[i] += result_string_to_rewards["game_win"]
+            #if player.lives <= 0: # Adding round loss
+            #    player_end_turn_rewards[i] += result_string_to_rewards["game_loss"]
+            #if player.wins >= 10: # Adding round win
+            #    player_end_turn_rewards[i] += result_string_to_rewards["game_win"]
 
 
             if VERBOSE:
@@ -491,9 +494,9 @@ def train():
     # Get the current date and time
     if USE_WANDB:
         wandb_id = wandb.util.generate_id()
-        run_name = "Pretrain Transformer 7 (pretrained on no limit)"
-        #wandb.init(resume = "must", id = "5qcm5k4i")
-        wandb.init(project = "sap-god-bot", name = run_name, id = wandb_id)
+        run_name = "Final Stage Attempt 1"
+        wandb.init(resume = "must", id = "l2kohj0l")
+        #wandb.init(project = "sap-god-bot", name = run_name, id = wandb_id)
         wandb.config.update(config, allow_val_change = True)
         print("WandB ID: ", wandb_id)
 
@@ -515,8 +518,8 @@ def train():
     learning_rate_decay = config["learning_rate_decay"]
 
     # Loading runs
-    train_mode = "pretrained" # "pretrained", "scratch", "continue", "none"
-    train_path = "pretrained_model_30000.pth"
+    train_mode = "continue" # "pretrained", "scratch", "continue", "none", "continue_just_model"
+    train_path = "Final Stage Attempt 1_iip1d1qc/model_test_75.pt"
 
     if train_mode == "continue":
         loaded_values = torch.load(train_path)
@@ -525,7 +528,7 @@ def train():
         if "target_model" in loaded_values:
             target_net.load_state_dict(loaded_values["target_model"])
 
-        starting_epoch = loaded_values["epoch"]
+        starting_epoch = loaded_values["epoch"] + 1
         epsilon = loaded_values["epsilon"]
         epsilon_pt_organizer = loaded_values["epsilon_pt_organizer"]
         greedy_pt_organizer = loaded_values["greedy_pt_organizer"]
@@ -550,9 +553,17 @@ def train():
 
     if USE_WANDB:
         wandb.watch(policy_net)
+
+    if False:
+        print("Creating Teams for the Past Team Organizer...")
+        experience_replay, epsilon_pt_organizer, er_elapsed_time = run_with_processes(policy_net, config, epsilon, 1, epsilon_pt_organizer)
+        eval_results, actions_used, past_team_win_percentages, pets_bought, food_bought, pets_sold = evaluate_model(policy_net, greedy_pt_organizer, config = config, epoch = 1)
+        greedy_pt_organizer.update_teams()
+        epsilon_pt_organizer.update_teams()
+        print()
         
     #eval_results, actions_used = evaluate_model(policy_net, config, epoch = 0)
-    #visualize_rollout(policy_net, config)
+    visualize_rollout(policy_net, config)
     #eval_results, actions_used, past_team_win_percentages, pets_bought, food_bought, pets_sold = evaluate_model(policy_net, greedy_pt_organizer, config = config, epoch = 2)
     #test_legal_move_masking(config)
 
@@ -611,7 +622,7 @@ def train():
 
             print("Model saved")
 
-        if epoch % 5 == 0:
+        if epoch % config["target_net_update_epochs"] == 0:
             target_net = deepcopy(policy_net)
             print("TARGET NET MODEL WEIGHTS UPDATED ON EPOCH: ", epoch)
         

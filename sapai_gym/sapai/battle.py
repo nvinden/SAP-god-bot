@@ -529,7 +529,12 @@ def battle_phase_hurt_and_faint(battle_obj, phase, teams, pet_priority, phase_di
             fainted_pet = fteam[pet_idx].pet
             ### Check for all pets that trigger off this fainted pet (including self)
             for te_team_idx, te_pet_idx in pp:
+
                 other_pet = teams[te_team_idx][te_pet_idx].pet
+
+                if te_team_idx != team_idx and other_pet.name == "pet-shark":
+                    continue
+
                 te_idx = [te_team_idx, te_pet_idx]
                 activated, targets, possible = other_pet.faint_trigger(
                     fainted_pet, te_idx, oteam

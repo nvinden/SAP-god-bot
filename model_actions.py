@@ -200,6 +200,9 @@ def roll(shop : Shop) -> None:
 def buy_pet(player : Player, pet_idx : int, best_sell_idx : int = None) -> str:
     assert pet_idx >= 0 and pet_idx < 6
 
+    og_pet_shop = deepcopy(player.shop)
+    og_pet_index = pet_idx
+
     sell_return_index = None
 
     number_pets = len(player.shop.pets)
@@ -232,12 +235,14 @@ def buy_pet(player : Player, pet_idx : int, best_sell_idx : int = None) -> str:
             if len(return_pet_val) == 1:
                 sell_idx = return_pet_val[0]
             else:
-                pet_priority = [sell_priority_for_same_pet(player.team.slots[pet_idx].pet, pet_to_sell) for pet_idx in return_pet_val]
+                pet_priority = [sell_priority_for_same_pet(player.team.slots[i].pet, pet_to_sell) for i in return_pet_val]
                 pet_index = np.argmax(pet_priority)
                 sell_idx = return_pet_val[pet_index]
 
+            player.shop = og_pet_shop
+
             player.sell(sell_idx)
-            player.buy_pet(pet_idx)
+            player.buy_pet(og_pet_index)
 
             sell_return_index = sell_idx
 
@@ -446,8 +451,10 @@ def call_action_from_q_index(player : Player, q_idx : int, food_best_move : int 
             combine_idx = -1
             for i, slot in enumerate(player.team.slots):
                 if slot.obj.name == pet_to_combine and slot.obj.level < 3:
-                    combine_idx = i
-                    break
+                    if combine_idx == -1:
+                        combine_idx = i
+                    elif slot.obj.health + slot.obj.attack > player.team.slots[combine_idx].obj.health + player.team.slots[combine_idx].obj.attack:
+                        combine_idx = i
 
             if combine_idx == -1:
                 ret_val = "invalid_idx"
@@ -553,7 +560,10 @@ def food_priority_for_same_pet(pet, food : str):
         if pet.level >= 3:
             food_priority -= 10000
         else:
-            food_priority += (pet.tier - 1) * 100
+            if isinstance(pet.tier, int):
+                food_priority += (pet.tier - 1) * 100
+            else:
+                food_priority -= 1000
 
     food_priority = food_priority + (min(pet.attack, 50) + min(pet.health, 50))
     return food_priority

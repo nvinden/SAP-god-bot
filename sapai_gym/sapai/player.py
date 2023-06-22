@@ -158,6 +158,9 @@ class Player:
             pet = pet.obj
 
         if type(pet).__name__ != "Pet":
+            print(self.team)
+            print(self.shop)
+            print(self)
             raise WrongObjectException(f"Attempted to buy_pet using object {pet}")
 
         shop_idx = self.shop.index(pet)

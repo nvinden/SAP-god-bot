@@ -329,7 +329,8 @@ class SAPAI(nn.Module):
         item2idx, idx2item = get_idx_item_dicts()
         # 1) Buy pet legality:
         #   a) Must have enough money
-        #   b) Must have enough slots OR must have a pet to combine with
+        #   b) Must have enough slots OR must have a pet to combine with <- WITH NEW BUY POLICY
+        #       THIS IS UNTRUE
         if player.gold < 3:
             pretrain_action_mask[:len(idx2pet)] = 0
         
@@ -338,13 +339,13 @@ class SAPAI(nn.Module):
             if slot.obj.name != "pet-none":
                 pet_level[slot.obj.name].append(slot.obj.level)
                 
-        if len(player.team.filled) >= 5: # Full team
-            for i in range(len(idx2pet)):
-                pet = idx2item[i]
-                if pet not in pet_level.keys():
-                    pretrain_action_mask[i] = 0
-                elif min(pet_level[pet]) >= 3:
-                    pretrain_action_mask[i] = 0
+        #if len(player.team.filled) >= 5: # Full team
+        #    for i in range(len(idx2pet)):
+        #        pet = idx2item[i]
+        #        if pet not in pet_level.keys():
+        #            pretrain_action_mask[i] = 0
+        #        elif min(pet_level[pet]) >= 3:
+        #            pretrain_action_mask[i] = 0
 
         # 2) Buy food legality:
         #   a) Must have enough money
