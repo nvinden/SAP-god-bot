@@ -91,8 +91,8 @@ def evaluate_model(net : SAPAI, pt_organizer : PastTeamsOrganizer, epoch : int, 
 
                 # If food was bought
                 if return_food_val is not None:
-                    pet_who_ate = copied_player.team[return_food_val].pet.name
-                    food_placed_string += str(player.team)
+                    pet_who_ate = idx2pet[return_food_val]
+                    food_placed_string += str(copied_player.team)
                     food_placed_string += f"{pet_who_ate} ate food {idx2food[action.item() - action_beginning_index[action2index['buy_food']]]}\n\n"
 
                 # if bought pet
@@ -108,8 +108,12 @@ def evaluate_model(net : SAPAI, pt_organizer : PastTeamsOrganizer, epoch : int, 
                     pets_sold[idx2pet[action - action_beginning_index[action2index["sell"]]]][turn_number] += 1
 
                 if return_sell_val is not None:
-                    pets_sold[idx2pet[return_sell_val]][turn_number] += 1
-                    actions_used["sell"][turn_number] += 1
+                    pet_name = idx2pet[return_sell_val % len(idx2pet)]
+                    if return_sell_val < 5:
+                        pets_sold[pet_name][turn_number] += 1
+                        actions_used["sell"][turn_number] += 1
+                    else:
+                        actions_used["combine"][turn_number] += 1
 
             # Remove players that have pressed end turn
             not_ended_turns = actions_taken["all"] != (N_ACTIONS - 1)

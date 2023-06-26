@@ -1,6 +1,6 @@
 VERBOSE = False
 N_ACTIONS = 383
-USE_WANDB = False
+USE_WANDB = True
 
 rollout_device = "cuda"
 training_device = "cuda"
@@ -8,18 +8,18 @@ training_device = "cuda"
 DEFAULT_CONFIGURATION = {
     # Model parameters
     "d_model": 316,
-    "nhead": 3,#3,
-    "num_layers": 2, #2,
+    "nhead": 6,#3,
+    "num_layers": 4, #2,
 
     # Rollout parameters
     "players_per_simulation": 30,
-    "action_limit": 15, # Number of actions a player can do in a turn before they get skipped
+    "action_limit": 12, # Number of actions a player can do in a turn before they get skipped
     "number_of_battles_per_player_turn": 5,
-    "number_of_battles_per_simulation": 20,
-    "max_num_threads": 10, #12,
+    "number_of_battles_per_simulation": 18,
+    "max_num_threads": 8, #12,
 
     # Evaluation parameters
-    "number_of_evaluation_turns": 20,
+    "number_of_evaluation_turns": 18,
 
     # Random action parameters
     "epsilon": 0.20,
@@ -27,7 +27,7 @@ DEFAULT_CONFIGURATION = {
     "epsilon_min": 0.15,
 
     # Training parameters
-    "epochs": 300,
+    "epochs": 500,
     "batch_size": 64,
     "num_updates_per_sample": 8.0,
     "gamma": 0.995,
@@ -36,11 +36,11 @@ DEFAULT_CONFIGURATION = {
     "win_percentage_threshold_past_teams": 0.55,
     "freeze_transformer_epochs": 5, 
     "target_net_update_epochs": 10,
-    "first_epoch_no_learning": True,
+    "first_epoch_no_learning": False,
 
     # Action Illegalization parameters
     "illegalize_rolling": (0, 0),
-    "illegalize_freeze_unfreeze": (0, 500),
+    "illegalize_freeze_unfreeze": (0, 75),
     "illegalize_combine": (0, 0),
 
     # Reward parameters
@@ -48,7 +48,7 @@ DEFAULT_CONFIGURATION = {
     "allow_stat_increase_as_reward": False,
     "allow_combine_reward": False,
     "allow_penalty_for_unused_gold": True,
-    "allow_multi_freeze_unfreeze_penalty": True,
+    "allow_multi_freeze_unfreeze_penalty": False,
 
     # Pretrain Transformer parameters
     "pretrain_transformer": False,
@@ -62,8 +62,8 @@ DEFAULT_CONFIGURATION = {
 PRETRAIN_DEFAULT_CONFIGURATION = {
     # Model parameters
     "d_model": 316,
-    "nhead": 3,
-    "num_layers": 2,
+    "nhead": 6,
+    "num_layers": 4,
 
     # Training parameters
     "epochs": 100_000,

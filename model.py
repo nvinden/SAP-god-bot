@@ -105,6 +105,8 @@ class SAPAI(nn.Module):
 
         if return_sell_actions:
             sell_actions = actions[:, action_beginning_index[action2index["sell"]]:action_beginning_index[action2index["sell"] + 1]].clone()
+            combine_actions = actions[:, action_beginning_index[action2index["combine"]]:action_beginning_index[action2index["combine"] + 1]].clone()
+            sell_actions = torch.cat((sell_actions, combine_actions), dim = 1)
 
         if return_food_actions and return_sell_actions:
             return actions, food_actions, sell_actions
@@ -256,7 +258,7 @@ class SAPAI(nn.Module):
         if action_masks is None:
             all_action_mask = np.zeros(shape = (len(player_list), N_ACTIONS), dtype = np.uint8)
             all_food_mask = np.zeros(shape = (len(player_list), len(pet2idx)), dtype = np.uint8)
-            all_sell_mask = np.zeros(shape = (len(player_list), len(pet2idx)), dtype = np.uint8)
+            all_sell_mask = np.zeros(shape = (len(player_list), 2 * len(pet2idx)), dtype = np.uint8)
             for player_num, player in enumerate(player_list):
                 action_mask, food_mask, sell_mask = create_available_action_mask(player, return_food_mask = True, return_sell_mask = True)
                 epoch_illegal_mask = create_epoch_illegal_mask(epoch, config = self.config)

@@ -228,25 +228,35 @@ def buy_pet(player : Player, pet_idx : int, best_sell_idx : int = None) -> str:
 
         # Buy selling because there is no available space
         if best_sell_idx is not None:
-            pet_to_sell = idx2pet[best_sell_idx]
-            return_pet_val = [i for i, slot in enumerate(player.team.slots) if slot.pet.name == pet_to_sell]
+            sell_instead_of_combine = True if best_sell_idx < len(pet2idx) else False
+            pet_used = idx2pet[best_sell_idx % len(pet2idx)]
+            if sell_instead_of_combine:
+                return_pet_val = [i for i, slot in enumerate(player.team.slots) if slot.pet.name == pet_used]
 
-            # If food selection is an effect, prioritize pets that are not already affected by an effect
-            if len(return_pet_val) == 1:
-                sell_idx = return_pet_val[0]
+                # If food selection is an effect, prioritize pets that are not already affected by an effect
+                if len(return_pet_val) == 1:
+                    sell_idx = return_pet_val[0]
+                else:
+                    pet_priority = [sell_priority_for_same_pet(player.team.slots[i].pet, pet_used) for i in return_pet_val]
+                    pet_index = np.argmax(pet_priority)
+                    sell_idx = return_pet_val[pet_index]
+
+                player.shop = og_pet_shop
+
+                player.sell(sell_idx)
+                player.buy_pet(og_pet_index)
+
+                return "success", best_sell_idx
             else:
-                pet_priority = [sell_priority_for_same_pet(player.team.slots[i].pet, pet_to_sell) for i in return_pet_val]
-                pet_index = np.argmax(pet_priority)
-                sell_idx = return_pet_val[pet_index]
+                pet_to_combine = -1
+                for i, slot in enumerate(player.team.slots):
+                    if slot.pet.name == pet_used:
+                        pet_to_combine = i
+                        break
+                combine(player, pet_to_combine)
+                player.buy_pet(og_pet_index)
 
-            player.shop = og_pet_shop
-
-            player.sell(sell_idx)
-            player.buy_pet(og_pet_index)
-
-            sell_return_index = sell_idx
-
-            return "success", sell_return_index
+                return "success", best_sell_idx + len(pet2idx)
 
         return "not_enough_space", sell_return_index
 
@@ -426,9 +436,13 @@ def call_action_from_q_index(player : Player, q_idx : int, food_best_move : int 
 
                 food_return_index, _ = auto_assign_food_to_pet(food_to_buy, player, food_move = food_best_move, epsilon = epsilon)
 
+                pet_name_to_be_fed = player.team.slots[food_return_index].pet.name
+
                 ret_val = buy_food(player, 0, food_return_index)
 
                 player.shop.slots = old_shop_slots
+
+                food_return_index = pet2idx[pet_name_to_be_fed]
         else:
             food_shop_list = [food.name for food in player.shop.foods if food.name != "food-none"]
 
@@ -436,9 +450,14 @@ def call_action_from_q_index(player : Player, q_idx : int, food_best_move : int 
                 ret_val = "invalid_idx"
             else:
                 food_buy_idx = food_shop_list.index(food_to_buy)
+
                 food_return_index, _ = auto_assign_food_to_pet(food_to_buy, player, food_move = food_best_move, epsilon = epsilon)
 
+                pet_name_to_be_fed = player.team.slots[food_return_index].pet.name
+
                 ret_val = buy_food(player, food_buy_idx, food_return_index)
+
+                food_return_index = pet2idx[pet_name_to_be_fed]
     elif q_idx >= action_ranges[3] and q_idx < action_ranges[4]: # Combine
         #print("Combining")
         pet_list_index = q_idx - action_ranges[3]
@@ -769,13 +788,20 @@ def create_available_action_mask(player : Player, return_food_mask : bool = Fals
         action_idx = action_beginning_index[action2index["unfreeze"]] + item_idx
         action_mask[action_idx] = 1
 
-    if return_food_mask or return_sell_mask:
-        food_sell_mask = np.array([1 if pet in sellable_pets else 0 for i, pet in enumerate(pet2idx.keys())])
+    if return_food_mask:
+        food_mask = deepcopy(action_mask[action_beginning_index[action2index["sell"]]:action_beginning_index[action2index["sell"] + 1]])
 
-        if return_food_mask and return_sell_mask: return action_mask, deepcopy(food_sell_mask), deepcopy(food_sell_mask)
-        else: return action_mask, deepcopy(food_sell_mask)
+    if return_sell_mask:
+        sell_animal_component = deepcopy(action_mask[action_beginning_index[action2index["sell"]]:action_beginning_index[action2index["sell"] + 1]])
+        combine_pets_component = deepcopy(action_mask[action_beginning_index[action2index["combine"]]:action_beginning_index[action2index["combine"] + 1]])
+        sell_mask = np.concatenate([sell_animal_component, combine_pets_component], axis = 0)
 
-    return action_mask
+
+    if return_food_mask and return_sell_mask: return action_mask, deepcopy(food_mask), deepcopy(sell_mask)
+    elif return_food_mask: return action_mask, food_mask
+    elif return_sell_mask: return action_mask, sell_mask
+    else: return action_mask
+
 
 buyable_pets = [pet for pet in pet2idx.keys() if pet not in ["pet-none", "pet-zombie-cricket", "pet-bus", "pet-zombie-fly", "pet-dirty-rat", "pet-chick", "pet-ram", "pet-bee"]]
 buyable_foods = [food for food in food2idx.keys() if food not in ["food-milk"]]

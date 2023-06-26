@@ -5,6 +5,7 @@
     "version": "0.2.0",
     "configurations": [
 
+
         {
             "name": "Train",
             "type": "python",
@@ -29,6 +30,15 @@
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/train_reorder.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            //"args": ["-Xfrozen_modules=off"],
+        },
+        {
+            "name": "Deploy",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/deploy.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             //"args": ["-Xfrozen_modules=off"],

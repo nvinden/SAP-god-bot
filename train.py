@@ -263,7 +263,7 @@ def run_simulation(net : SAPAI, config : dict, epsilon : float, epoch : int, pt_
                     action_replay["reward"] = player_end_turn_rewards[player_number]
 
                     if config["allow_penalty_for_unused_gold"]:
-                        action_replay["reward"] -= 0.1 * action_replay["next_state"].gold
+                        action_replay["reward"] -= 0.3 * action_replay["next_state"].gold
 
                 if config['allow_multi_freeze_unfreeze_penalty']:
                     if action_replay["action"] >= action_beginning_index[action2index["freeze"]] and action_replay["action"] < action_beginning_index[action2index["freeze"]] + num_agent_actions["freeze"]:
@@ -494,8 +494,8 @@ def train():
     # Get the current date and time
     if USE_WANDB:
         wandb_id = wandb.util.generate_id()
-        run_name = "Final Stage Attempt 1"
-        wandb.init(resume = "must", id = "l2kohj0l")
+        run_name = "Larger Model No T-Pretrain"
+        wandb.init(resume = "must", id = "75ujrw9f")
         #wandb.init(project = "sap-god-bot", name = run_name, id = wandb_id)
         wandb.config.update(config, allow_val_change = True)
         print("WandB ID: ", wandb_id)
@@ -519,7 +519,7 @@ def train():
 
     # Loading runs
     train_mode = "continue" # "pretrained", "scratch", "continue", "none", "continue_just_model"
-    train_path = "Final Stage Attempt 1_iip1d1qc/model_test_75.pt"
+    train_path = "Larger Model No T-Pretrain_6wtd68mi/model_test_246.pt"
 
     if train_mode == "continue":
         loaded_values = torch.load(train_path)
@@ -563,7 +563,7 @@ def train():
         print()
         
     #eval_results, actions_used = evaluate_model(policy_net, config, epoch = 0)
-    visualize_rollout(policy_net, config)
+    #visualize_rollout(policy_net, config)
     #eval_results, actions_used, past_team_win_percentages, pets_bought, food_bought, pets_sold = evaluate_model(policy_net, greedy_pt_organizer, config = config, epoch = 2)
     #test_legal_move_masking(config)
 

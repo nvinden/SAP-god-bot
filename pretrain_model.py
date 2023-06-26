@@ -264,7 +264,7 @@ def pretrain_model():
     out_nets = [action_net(config) for _, action_net, _, _ in pretraining_actions]
 
     # Load model
-    model_file = "pretrained_model_30000.pth"
+    model_file = None#"pretrained_model_30000.pth"
     if model_file is not None:
         checkpoint = torch.load(model_file)
         model.load_state_dict(checkpoint["model"])
