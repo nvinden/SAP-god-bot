@@ -42,6 +42,15 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             //"args": ["-Xfrozen_modules=off"],
-        }
+        },
+        {
+            "name": "Test Reorder",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/test_reorder.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            //"args": ["-Xfrozen_modules=off"],
+        },
     ]
 }

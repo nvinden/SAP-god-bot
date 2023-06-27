@@ -51,79 +51,6 @@ all_items_idx = {
     "level": 7,
 }
 
-# This contains the bias for the pet auto order
-# Higher numbers means that pets are more likely to be in the front
-# Lower numbers means that pets are more likely to be in the back
-pet_auto_order_bias = {
-    'pet-ant': 2,
-    'pet-beaver': 0,
-    'pet-cricket': 1,
-    'pet-duck': 0,
-    'pet-fish': 0,
-    'pet-horse': -3,
-    'pet-mosquito': 0,
-    'pet-otter': 0,
-    'pet-pig': 0,
-    'pet-sloth': 0,
-    'pet-crab': 0,
-    'pet-dodo': -1,
-    'pet-dog': -1,
-    'pet-elephant': -3,
-    'pet-flamingo': 2,
-    'pet-hedgehog': -2,
-    'pet-peacock': 0,
-    'pet-rat': 0,
-    'pet-shrimp': 0,
-    'pet-spider': 1,
-    'pet-swan': 0,
-    'pet-badger': -5,
-    'pet-blowfish': 2,
-    'pet-camel': 0,
-    'pet-giraffe': -1,
-    'pet-kangaroo': -1,
-    'pet-ox': -2,
-    'pet-rabbit': 0,
-    'pet-sheep': -1,
-    'pet-snail': 0,
-    'pet-turtle': 3,
-    'pet-whale': -1,
-    'pet-bison': 0,
-    'pet-deer': 3,
-    'pet-dolphin': 0,
-    'pet-hippo': 4,
-    'pet-monkey': -1,
-    'pet-penguin': 0,
-    'pet-rooster': 0,
-    'pet-skunk': 0,
-    'pet-squirrel': 0,
-    'pet-worm': 0,
-    'pet-cow': 0,
-    'pet-crocodile': 0,
-    'pet-parrot': 0,
-    'pet-rhino': 0,
-    'pet-scorpion': 0,
-    'pet-seal': 0,
-    'pet-shark': -6,
-    'pet-turkey': 0,
-    'pet-cat': 0,
-    'pet-boar': 0,
-    'pet-dragon': 0,
-    'pet-fly': -5,
-    'pet-gorilla': 0,
-    'pet-leopard': 0,
-    'pet-mammoth': 6,
-    'pet-snake': -1,
-    'pet-tiger': 0,
-    'pet-zombie-cricket': 0,
-    'pet-bus': 0,
-    'pet-zombie-fly': 0,
-    'pet-dirty-rat': 0,
-    'pet-chick': 0,
-    'pet-ram': 0,
-    'pet-bee': 0
-}
-
-
 # Pet food index numbers:
 pet_name_idx = [k for k, v in ALL_DATA['pets'].items() if k != 'pet-none' and "StandardPack" in v['packs']]
 pet_name_idx = {k : i + len(list(all_items_idx)) for i, k in enumerate(pet_name_idx)}
@@ -521,26 +448,6 @@ def call_action_from_q_index(player : Player, q_idx : int, food_best_move : int 
     elif return_sell_index: return ret_val, sell_return_index
     else: return ret_val
 
-def auto_order_team(player, return_order_indexes = False, return_team = True) -> Player:
-    # Orders pets from 1. Bias, 2. Total stats (attack + health)
-
-    if isinstance(player, Team):
-        player = Player(team = player)
-
-    value_pairs = [(pet_idx, player.team.slots[pet_idx]) for pet_idx in player.team.filled]
-    value_pairs = sorted(value_pairs, key = lambda x : (pet_auto_order_bias[x[1].pet.name], x[1].attack + x[1].health), reverse = True)
-
-    player.reorder([x[0] for x in value_pairs])
-
-    if return_order_indexes and return_team:
-        order_indexes = [x[0] for x in value_pairs] + [i for i in range(5) if player.team.slots[i].pet.name == "pet-none"]
-        return deepcopy(player.team), order_indexes
-    elif return_order_indexes:
-        order_indexes = [x[0] for x in value_pairs]
-        return order_indexes
-    elif return_team:
-        return deepcopy(player.team)
-
 food_types = {
     "single_target_stat_up": {"food-apple", "food-cupcake", 'food-pear', 'food-milk'},
     "multi_target_stat_up": {"food-salad-bowl", "food-pizza", "food-canned-food", 'food-sushi'},
@@ -937,3 +844,507 @@ def create_epoch_illegal_mask(epoch, config):
         action_mask[action_beginning_index[action2index["combine"]]:action_beginning_index[action2index["combine"] + 1]] = 0
 
     return action_mask
+
+
+# Reordering Functions and data
+
+# This contains the bias for the pet auto order
+# Higher numbers means that pets are more likely to be in the front
+# Lower numbers means that pets are more likely to be in the back
+pet_auto_order_bias = {
+    'pet-ant': 2,
+    'pet-beaver': 0,
+    'pet-cricket': 1,
+    'pet-duck': 0,
+    'pet-fish': 0,
+    'pet-horse': -3,
+    'pet-mosquito': 0,
+    'pet-otter': 0,
+    'pet-pig': 0,
+    'pet-sloth': 0,
+    'pet-crab': 0,
+    'pet-dodo': -1,
+    'pet-dog': -1,
+    'pet-elephant': -3,
+    'pet-flamingo': 2,
+    'pet-hedgehog': -2,
+    'pet-peacock': 0,
+    'pet-rat': 0,
+    'pet-shrimp': 0,
+    'pet-spider': 1,
+    'pet-swan': 0,
+    'pet-badger': -5,
+    'pet-blowfish': 2,
+    'pet-camel': 0,
+    'pet-giraffe': -1,
+    'pet-kangaroo': -1,
+    'pet-ox': -2,
+    'pet-rabbit': 0,
+    'pet-sheep': -1,
+    'pet-snail': 0,
+    'pet-turtle': 3,
+    'pet-whale': -1,
+    'pet-bison': 0,
+    'pet-deer': 3,
+    'pet-dolphin': 0,
+    'pet-hippo': 4,
+    'pet-monkey': -1,
+    'pet-penguin': 0,
+    'pet-rooster': 0,
+    'pet-skunk': 0,
+    'pet-squirrel': 0,
+    'pet-worm': 0,
+    'pet-cow': 0,
+    'pet-crocodile': 0,
+    'pet-parrot': 0,
+    'pet-rhino': 0,
+    'pet-scorpion': 0,
+    'pet-seal': 0,
+    'pet-shark': -6,
+    'pet-turkey': 0,
+    'pet-cat': 0,
+    'pet-boar': 0,
+    'pet-dragon': 0,
+    'pet-fly': -5,
+    'pet-gorilla': 0,
+    'pet-leopard': 0,
+    'pet-mammoth': 6,
+    'pet-snake': -1,
+    'pet-tiger': 0,
+    'pet-zombie-cricket': 0,
+    'pet-bus': 0,
+    'pet-zombie-fly': 0,
+    'pet-dirty-rat': 0,
+    'pet-chick': 0,
+    'pet-ram': 0,
+    'pet-bee': 0
+}
+
+pet_enjoys_scaling_bias = {
+    'pet-ant': 0,
+    'pet-beaver': 0,
+    'pet-cricket': 0,
+    'pet-duck': 0,
+    'pet-fish': 0,
+    'pet-horse': 0,
+    'pet-mosquito': 0,
+    'pet-otter': 0,
+    'pet-pig': 0,
+    'pet-sloth': 0,
+    'pet-crab': 0.5,
+    'pet-dodo': 1.0,
+    'pet-dog': 0.0,
+    'pet-elephant': 1.0,
+    'pet-flamingo': 0.0,
+    'pet-hedgehog': 0.0,
+    'pet-peacock': 0.5,
+    'pet-rat': 0.0,
+    'pet-shrimp': 0.0,
+    'pet-spider': 0.0,
+    'pet-swan': 0,
+    'pet-badger': 0.0,
+    'pet-blowfish': 1.5,
+    'pet-camel': 0.5,
+    'pet-giraffe': 0.0,
+    'pet-kangaroo': 0.0,
+    'pet-ox': 1.0,
+    'pet-rabbit': 0.0,
+    'pet-sheep': 0.0,
+    'pet-snail': 0.0,
+    'pet-turtle': 0.0,
+    'pet-whale': 0.0,
+    'pet-bison': 0.5,
+    'pet-deer': 0.0,
+    'pet-dolphin': 0.5,
+    'pet-hippo': 2.5,
+    'pet-monkey': 0.5,
+    'pet-penguin': 0.0,
+    'pet-rooster': 2.5,
+    'pet-skunk': 0.0,
+    'pet-squirrel': 0,
+    'pet-worm': 0,
+    'pet-cow': 0,
+    'pet-crocodile': 1.5,
+    'pet-parrot': 0,
+    'pet-rhino': 2.5,
+    'pet-scorpion': 0.0,
+    'pet-seal': 0.0,
+    'pet-shark': 0.0,
+    'pet-turkey': 0.0,
+    'pet-cat': 0.0,
+    'pet-boar': 2.5,
+    'pet-dragon': 0.5,
+    'pet-fly': 0.0,
+    'pet-gorilla': 2.5,
+    'pet-leopard': 2.5,
+    'pet-mammoth': 0.5,
+    'pet-snake': 0.0,
+    'pet-tiger': 0.0,
+    'pet-zombie-cricket': 0.0,
+    'pet-bus': 0.0,
+    'pet-zombie-fly': 0.0,
+    'pet-dirty-rat': 0.0,
+    'pet-chick': 0.0,
+    'pet-ram': 0.0,
+    'pet-bee': 0.0
+}
+
+spawers = {"pet-cricket", "pet-spider", "pet-sheep", "pet-deer", "pet-rooster"}
+
+def pet_add_to_order_utility(slot_number : int, team : Team) -> float:
+    pet_name = team.slots[slot_number].pet.name
+
+    assert pet_name in pet2idx.keys()
+
+    match pet_name:
+        case 'pet-ant':
+            # Likes to be in front of at least 1 pet
+            number_behind = [1 for i in range(5) if i > slot_number and i in team.filled]
+            return min(1.2, sum(number_behind))
+        case 'pet-beaver':
+            return 0.0
+        case 'pet-cricket':
+            return 0.0
+        case 'pet-duck':
+            return 0.0
+        case 'pet-fish':
+            return 0.0
+        case 'pet-horse':
+            # Likes to be behind spawners
+            spawners_in_front = [1 for i in range(5) if i < slot_number and i in team.filled and team.slots[i].pet.name in spawers]
+            return 0.5 * sum(spawners_in_front)
+        case 'pet-mosquito':
+            return 0.0
+        case 'pet-otter':
+            return 0.0
+        case 'pet-pig':
+            return 0.0
+        case 'pet-sloth':
+            return 0.0
+        case 'pet-crab':
+            return 0.0
+        case 'pet-dodo':
+            # Likes being in front of scaler
+            pet_in_front = [i for i in range(5) if i < slot_number and i in team.filled and team.slots[i].pet.name in pet_enjoys_scaling_bias.keys()]
+            
+            if len(pet_in_front) == 0:
+                return 0.0
+            else:
+                pet_in_front = team.slots[pet_in_front[0]].pet
+                if pet_in_front.health >= 50 or pet_in_front.attack >= 50:
+                    return 0.0
+                else:
+                    return pet_enjoys_scaling_bias[pet_in_front.name]
+        case 'pet-dog':
+            # Likes being behind spawners
+            spawners_in_front = [1 for i in range(5) if i < slot_number and i in team.filled and team.slots[i].pet.name in spawers]
+            return sum(spawners_in_front)
+        case 'pet-elephant':
+            # Complex. Likes to be in back. OR in front of pets that like taking damage
+            pass
+        case 'pet-flamingo':
+            # Likes to be in front of 2 other pets
+            number_behind = [1 for i in range(5) if i > slot_number and i in team.filled]
+            return min(2.0, sum(number_behind))
+        case 'pet-hedgehog':
+            return 0.0
+        case 'pet-peacock':
+            return 0.0
+        case 'pet-rat':
+            # Likes to be in front (barely)
+            if slot_number == min(team.filled):
+                return 0.2
+            else:
+                return 0.0
+        case 'pet-shrimp':
+            return 0.0
+        case 'pet-spider':
+            return 0.0
+        case 'pet-swan':
+            return 0.0
+        case 'pet-badger':
+            if slot_number == max(team.filled):
+                return 1.5
+            else:
+                return 0.0
+        case 'pet-blowfish':
+            # Likes to be in front
+            spot_factor = [0.0, 0.0, 0.25, 0.5, 1.0]
+            pets_ahead = [1 for i in range(5) if i < slot_number and i in team.filled]
+            return spot_factor[4 - len(pets_ahead)]
+        case 'pet-camel':
+            # Likes to be behind many pets
+            pets_behind = [1 for i in range(5) if i > slot_number and i in team.filled]
+            return sum(pets_behind)
+        case 'pet-giraffe':
+            # Likes to be with scaler (level wise shows how many)
+            ret_value = 0.0
+            level = team.slots[slot_number].pet.level
+            pets_idx_ahead = [i for i in range(5) if i < slot_number and i in team.filled]
+            pets_ahead = [team.slots[i].pet for i in pets_idx_ahead]
+            pets_ahead.reverse()
+            for i in range(level):
+                if i >= len(pets_ahead):
+                    ret_value -= 1.0
+                    continue
+                ret_value += pet_enjoys_scaling_bias[pets_ahead[i].name]
+            return ret_value
+        case 'pet-kangaroo':
+            # Likes to be behind big guy
+            pet_ahead = [i for i in range(5) if i < slot_number and i in team.filled]
+            if len(pet_ahead) == 0:
+                return 0.0
+            else:
+                pet_ahead = team.slots[pet_ahead[0]].pet
+                pet_ahead_stats = float(pet_ahead.health + pet_ahead.attack) / 60
+                spawner_bonus = 0.5 if pet_ahead.name in spawers else 0.0
+                defensive_bonus = 0.5 if pet_ahead.name in {"pet-gorilla", "pet-boar", "pet-hippo"} else 0.0
+                food_defensive_bonus = 0.5 if pet_ahead.status in {"status-garlic-armour", "status-extra-life", "status-melon-armor"} else 0.0
+                return (pet_ahead_stats + spawner_bonus + defensive_bonus + food_defensive_bonus)
+        case 'pet-ox':
+            # Likes to be behind at least one guy
+            if slot_number == min(team.filled):
+                return 0.0
+            else:
+                return 1.0
+        case 'pet-rabbit':
+            return 0.0
+        case 'pet-sheep':
+            # Does not like to be in the very front
+            if len(team.filled) == 5 and slot_number == 0:
+                return -1.0
+            else:
+                return 0.0
+        case 'pet-snail':
+            return 0.0
+        case 'pet-turtle':
+            # Likes to be in front of a good big target
+            pet_idx_behind = [i for i in range(5) if i > slot_number and i in team.filled]
+            pet_behind = [team.slots[i].pet for i in pet_idx_behind]
+            pet_behind.reverse()
+
+            level = team.slots[slot_number].pet.level
+            ret_val = 0.0
+
+            for i in range(level):
+                if i >= len(pet_behind):
+                    ret_val -1.0
+                    continue
+                
+                curr_pet = pet_behind[i]
+                stat_bonus = float(curr_pet.health + curr_pet.attack) / 60
+                already_has_status_penalty = -1.0 if curr_pet.status in {"status-garlic-armour", "status-extra-life", "status-sneak-attack", "status-food-melon"} else 0.0
+                ret_val += stat_bonus + already_has_status_penalty
+
+            return ret_val
+        case 'pet-whale':
+            pet_ahead = [i for i in range(5) if i < slot_number and i in team.filled]
+            if len(pet_ahead) == 0:
+                return 0.0
+            else:
+                pet_ahead = team.slots[pet_ahead[0]].pet
+                # Complex one. Look at faint abilities
+                # OKAY eat
+                if pet_ahead.name in {"pet-ant", "pet-cricket", "pet-hedgehog"}:
+                    return 0.5
+                # GOOD abilities
+                elif pet_ahead.name in {"pet-flamingo", "pet-spider", "pet-sheep", "pet-scorpion"}:
+                    return 1.0
+                elif pet_ahead.name in {"pet-turtle", "pet-deer"}:
+                    return 1.5
+                elif pet_ahead.name in {"pet-mammoth"}:
+                    return 2.5
+                else:
+                    return 0.0
+        case 'pet-bison':
+            return 0.0
+        case 'pet-deer':
+            # Likes to be in front
+            if slot_number == min(team.filled):
+                return 1.0
+            else:
+                return 0.0
+        case 'pet-dolphin':
+            return 0.0
+        case 'pet-hippo':
+            # Loves to be in the front
+            spot_factor = [0.0, 0.0, 0.0, 1.0, 1.5]
+            pets_ahead = [1 for i in range(5) if i < slot_number and i in team.filled]
+            return spot_factor[4 - len(pets_ahead)]
+        case 'pet-monkey':
+            # Likes to have a good scaler at front
+            if len(team.filled) == 1:
+                return 0.0
+            else:
+                frontest_animal = team.slots[min(team.filled)].pet
+                if frontest_animal.health >= 50 or frontest_animal.attack >= 50:
+                    return 0.0
+                else:
+                    return pet_enjoys_scaling_bias[frontest_animal.name]
+        case 'pet-penguin':
+            return 0.0
+        case 'pet-rooster':
+            return 0.0
+        case 'pet-skunk':
+            return 0.0
+        case 'pet-squirrel':
+            return 0.0
+        case 'pet-worm':
+            return 0.0
+        case 'pet-cow':
+            return 0.0
+        case 'pet-crocodile':
+            return 0.0
+        case 'pet-parrot':
+            # Another complex one
+            pet_ahead = [i for i in range(5) if i < slot_number and i in team.filled]
+            if len(pet_ahead) == 0:
+                return 0.0
+            else:
+                pet_ahead = team.slots[pet_ahead[0]].pet
+                # Complex one. Look at faint abilities
+                # OKAY eat
+                if pet_ahead.name in {"pet-ant", "pet-hedgehog", "pet-sheep", "pet-spider", "pet-mosquito"}:
+                    return 0.5
+                # GOOD abilities
+                elif pet_ahead.name in {"pet-flamingo", "pet-leopard", "pet-dolphin", "pet-kangaroo", "pet-camel", "pet-blowfish"}:
+                    return 1.0
+                elif pet_ahead.name in {"pet-deer", "pet-turkey", "pet-shark", "pet-rhino", "pet-skunk", "pet-crocodile", "pet-hippo"}:
+                    return 1.5
+                elif pet_ahead.name in {"pet-mammoth", "pet-snake", "pet-boar"}:
+                    return 2.5
+                else:
+                    return 0.0
+        case 'pet-rhino':
+            # likes being in front
+            spot_factor = [0.0, 0.0, 0.0, 1.0, 1.5]
+            pets_ahead = [1 for i in range(5) if i < slot_number and i in team.filled]
+            return spot_factor[4 - len(pets_ahead)]
+        case 'pet-scorpion':
+            # Likes being in front (takes out big guys)
+            spot_factor = [0.0, 0.0, 0.0, 0.5, 1.0]
+            pets_ahead = [1 for i in range(5) if i < slot_number and i in team.filled]
+            return spot_factor[4 - len(pets_ahead)]
+        case 'pet-seal':
+            return 0.0
+        case 'pet-shark':
+            # Likes to be behind attackers (just loves the back)
+            pets_ahead = [1 for i in range(5) if i < slot_number and i in team.filled]
+            return float(sum(pets_ahead))
+        case 'pet-turkey':
+            # Likes to be behind spawners
+            spawners_in_front = [1 for i in range(5) if i < slot_number and i in team.filled and team.slots[i].pet.name in spawers]
+            return float(sum(spawners_in_front))
+        case 'pet-cat':
+            return 0.0
+        case 'pet-boar':
+            # likes being in front
+            spot_factor = [0.0, 0.0, 0.0, 1.0, 1.5]
+            pets_ahead = [1 for i in range(5) if i < slot_number and i in team.filled]
+            return spot_factor[4 - len(pets_ahead)]
+        case 'pet-dragon':
+            return 0.0
+        case 'pet-fly':
+            # Likes to be behind spawner
+            spawners_in_front = [1 for i in range(5) if i < slot_number and i in team.filled and team.slots[i].pet.name in spawers]
+            return 1.1 * float(sum(spawners_in_front))
+        case 'pet-gorilla':
+            return 0.0
+        case 'pet-leopard':
+            return 0.0
+        case 'pet-mammoth':
+            # Likes to be in front a lot
+            pets_behind = [1 for i in range(5) if i > slot_number and i in team.filled]
+            return 1.5 * float(sum(pets_behind))
+        case 'pet-snake':
+            # Likes to be behind the biggest guy (preferably with a protection
+            # ability)
+            pet_ahead = [i for i in range(5) if i < slot_number and i in team.filled]
+            if len(pet_ahead) == 0:
+                return 0.0
+            else:
+                pet_ahead = team.slots[pet_ahead[0]].pet
+                pet_ahead_stats = float(pet_ahead.health + pet_ahead.attack) / 60
+                spawner_bonus = 0.5 if pet_ahead.name in spawers else 0.0
+                defensive_bonus = 0.5 if pet_ahead.name in {"pet-gorilla", "pet-boar", "pet-hippo"} else 0.0
+                food_defensive_bonus = 0.5 if pet_ahead.status in {"status-garlic-armour", "status-extra-life", "status-melon-armor"} else 0.0
+                return (pet_ahead_stats + spawner_bonus + defensive_bonus + food_defensive_bonus) * 1.5
+        case 'pet-tiger':
+            # Complex go through all the abilities pretty much
+            pet_ahead = [i for i in range(5) if i < slot_number and i in team.filled]
+            if len(pet_ahead) == 0:
+                return 0.0
+            else:
+                pet_ahead = team.slots[pet_ahead[0]].pet
+                # Complex one. Look at faint abilities
+                # OKAY eat
+                if pet_ahead.name in {"pet-ant", "pet-hedgehog", "pet-sheep", "pet-spider", "pet-mosquito"}:
+                    return 0.5
+                # GOOD abilities
+                elif pet_ahead.name in {"pet-flamingo", "pet-leopard", "pet-dolphin", "pet-kangaroo", "pet-camel", "pet-blowfish"}:
+                    return 1.0
+                elif pet_ahead.name in {"pet-deer", "pet-turkey", "pet-shark", "pet-rhino", "pet-skunk", "pet-crocodile", "pet-hippo"}:
+                    return 1.5
+                elif pet_ahead.name in {"pet-mammoth", "pet-snake", "pet-boar"}:
+                    return 2.5
+                else:
+                    return 0.0
+        case 'pet-zombie-cricket':
+            return 0.0
+        case 'pet-bus':
+            return 0.0
+        case 'pet-zombie-fly':
+            return 0.0
+        case 'pet-dirty-rat':
+            return 0.0
+        case 'pet-chick':
+            return 0.0
+        case 'pet-ram':
+            return 0.0
+        case 'pet-bee':
+            return 0.0
+        case _:
+            raise ValueError(f'Unknown pet name: {pet_name}')
+
+def calculate_team_score(team: Team) -> float:
+    total_score = 0.0
+
+    for i in team.filled:
+        total_score += pet_add_to_order_utility(i, team)
+
+    # Additional points for having the highest pets at the front
+    # Create a list of tuples with (index, pet) pairs
+    pet_list = [pet.pet for pet in team.slots if pet.pet.name != "pet-none"]
+    indexed_pets = [(index, pet) for index, pet in enumerate(pet_list)]
+    sorted_pets = sorted(indexed_pets, key=lambda x: (x[1].health, x[1].attack), reverse=True)
+    ordered_indexes = [index for index, _ in sorted_pets]
+
+    return total_score
+
+def auto_order_team(player, return_team = True) -> Player:
+    # Orders pets from 1. Bias, 2. Total stats (attack + health)
+    if isinstance(player, Team):
+        player = Player(team = player)
+
+    if len(player.team.filled) in [0, 1]:
+        if return_team: return deepcopy(player.team)
+        else: return
+
+    pet_bank = [pet.pet for pet in player.team.slots if pet.pet.name != "pet-none"]
+    current_team = [pet_bank[0], ]
+
+    for pet in pet_bank:
+        team_scores = [0.0] * (len(current_team) + 1)
+        for insert_idx in range(len(current_team) + 1):
+            proposed_team = deepcopy(current_team)
+            proposed_team.insert(insert_idx, pet)
+            team = Team(proposed_team)
+            greedy_score = calculate_team_score(team)
+
+            team_scores[insert_idx] = greedy_score
+
+        best_idx = team_scores.index(max(team_scores))
+        current_team.insert(best_idx, pet)
+
+    if return_team:
+        return deepcopy(player.team)
